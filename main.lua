@@ -1,5 +1,5 @@
 --modules
-local class = require "middleclass"
+local class = require "lib//middleclass"
 local G = love.graphics
 
 --constants
