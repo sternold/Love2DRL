@@ -79,7 +79,7 @@ function Rect:intersect(other)
     return (self.x1 <= other.x2 and self.x2 >= other.x1 and self.y1 <= other.y2 and self.y2 >= other.y1)
 end
 
-
+--LOVE
 function love.run()
     if love.math then
 		love.math.setRandomSeed(os.time())
@@ -203,6 +203,8 @@ function love.keypressed(key)
     end
 end
 
+---FUNCTIONS
+--MAP
 function make_map ()
     for x=1, MAP_WIDTH, 1 do
         table.insert(objectmap, x, {}) 
@@ -319,6 +321,7 @@ function tile_to_colortext(tile)
     return colortext
 end
 
+--MOVEMENT
 function is_blocked(x, y)
     if objectmap[x][y].blocked then
         return true
