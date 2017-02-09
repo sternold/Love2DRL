@@ -30,6 +30,7 @@ function GameObject:initialize(x, y, char, color)
     self.y = y
     self.char = char
     self.color = color
+    self.colortext = G.newText(G.getFont(), {color, char})
 end
 
 function GameObject:move(dx, dy)
@@ -40,8 +41,7 @@ function GameObject:move(dx, dy)
 end
 
 function GameObject:draw()
-    G.setColor(self.color)
-    G.draw(G.newText(G.getFont(), self.char), self.x*SCALE, self.y*SCALE)
+    G.draw(self.colortext, self.x*SCALE, self.y*SCALE)
 end
 
 
@@ -102,13 +102,16 @@ function love.load()
 
     --initialize
     map = make_map()
-    player = GameObject:new(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, "@", color_player)
 
     --test
     map[30][22].blocked = true
     map[30][22].block_sight = true
     map[50][22].blocked = true
     map[50][22].block_sight = true
+
+    drawablemap = map_to_image(map)
+
+    player = GameObject:new(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, "@", color_player)
 end
 
 function love.update(dt)
@@ -121,21 +124,7 @@ end
 
 function love.draw()
     --draw map
-    for i=1, table.maxn(map) do
-        for j=1, table.maxn(map[i]) do
-            tile = map[i][j]
-            wall = tile.block_sight
-            char = "?"
-            if wall then
-                G.setColor(color_dark_wall)
-                char = "#"
-            else
-                G.setColor(color_dark_ground)
-                char = "."
-            end  
-            G.draw(G.newText(G.getFont(), char), i*SCALE, j*SCALE)     
-        end
-    end
+    G.draw(drawablemap, 1, 1)     
 
     --draw player
     player:draw(G, SCALE)
@@ -164,7 +153,6 @@ function love.keypressed(key)
     worldactive = true
 end
 
-
 function make_map ()
     map = {}
     for i=1, MAP_WIDTH do
@@ -175,5 +163,30 @@ function make_map ()
         end
     end
     return map
+end
+
+function map_to_image(map)
+    tile = map[1][1]
+    char = tile_to_colortext(tile)
+    text = G.newText(G.getFont(), char)
+    for i=1, table.maxn(map) do
+        for j=2, table.maxn(map[i]) do
+            tile = map[i][j]
+            colortext = tile_to_colortext(tile)           
+            text:add(colortext, i*SCALE, j*SCALE)
+        end
+    end
+    return text
+end
+
+function tile_to_colortext(tile)
+    wall = tile.block_sight
+    colortext = {{255, 255, 255, 255}, "?"}
+    if wall then
+        char = {color_dark_wall, "#"}
+    else
+        char = {color_dark_ground, "."}
+    end 
+    return char
 end
 
