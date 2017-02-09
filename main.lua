@@ -8,12 +8,18 @@ SCREEN_WIDTH = 80
 SCREEN_HEIGHT = 50
 MAP_WIDTH = 78
 MAP_HEIGHT = 43
+ROOM_MAX_SIZE = 10
+ROOM_MIN_SIZE = 6
+MAX_ROOMS = 30
 
 --colors
 color_player = {200, 50, 50, 255}
 color_dark_wall = {0, 0, 200, 255}
 color_dark_ground = {100, 100, 250, 255}
 
+--variables
+player_start_x = 0
+player_start_y = 0
 worldactive = false
 
 --TILE
@@ -34,7 +40,7 @@ function GameObject:initialize(x, y, char, color)
 end
 
 function GameObject:move(dx, dy)
-    if not map[self.x + dx][self.y + dy].blocked then
+    if not objectmap[self.x + dx][self.y + dy].blocked then
         self.x = self.x + dx
         self.y = self.y + dy
     end
@@ -44,6 +50,25 @@ function GameObject:draw()
     G.draw(self.colortext, self.x*SCALE, self.y*SCALE)
 end
 
+--RECT
+Rect =  class('Rect')
+function Rect:initialize(x, y, w, h)
+    self.x1 = x
+    self.y1 = y
+    self.x2 = x + w
+    self.y2 = y + h
+end
+
+function Rect:center()
+    cx = (self.x1 + self.x2) / 2
+    cy = (self.y1 + self.y2) / 2
+    return {center_x = cx, center_y = cy}
+end
+
+function Rect:intersect(other)
+    return (self.x1 <= other.x2 and self.x2 >= other.x1 and
+                self.y1 <= other.y2 and self.y2 >= other.y1)
+end
 
 
 function love.run()
@@ -101,17 +126,11 @@ function love.load()
     G.setFont(G.newFont("PS2P-R.ttf", SCALE))
 
     --initialize
-    map = make_map()
+    objectmap = make_map()
+    player = GameObject(player_start_x, player_start_y, "@", color_player)
 
-    --test
-    map[30][22].blocked = true
-    map[30][22].block_sight = true
-    map[50][22].blocked = true
-    map[50][22].block_sight = true
-
-    drawablemap = map_to_image(map)
-
-    player = GameObject:new(SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2, "@", color_player)
+    --make map into a single image
+    drawablemap = map_to_image(objectmap)
 end
 
 function love.update(dt)
@@ -158,11 +177,79 @@ function make_map ()
     for i=1, MAP_WIDTH do
         map[i] = {} 
         for j=1, MAP_HEIGHT do
-            tile = Tile:new(false)
+            tile = Tile(true)
             map[i][j] = tile
         end
     end
+
+    --random dungeon generation
+    rooms = {}
+    for r=0, MAX_ROOMS do
+        --random width and height
+        w = love.math.random(ROOM_MIN_SIZE, ROOM_MAX_SIZE)
+        h = love.math.random(ROOM_MIN_SIZE, ROOM_MAX_SIZE)
+        --random position without going out of the boundaries of the map
+        x = love.math.random(0, MAP_WIDTH - w - 1)
+        y = love.math.random(0, MAP_HEIGHT - h - 1)
+
+        new_room = Rect(x, y, w, h)
+        failed = false
+        for x=1, table.maxn(rooms) do
+            if new_room:intersect(rooms[x]) then
+                failed = true
+                break
+            end
+        end
+        if(not failed) then
+            create_room(map, new_room)
+            new_room_center = new_room:center()
+            new_x = new_room_center.center_x
+            new_y = new_room_center.center_y
+
+            if table.maxn(rooms) == 0 then
+                player_start_x = new_x
+                player_start_y = new_y
+            else    
+                prev_room_center = rooms[num_rooms-1]:center()
+                prev_x = prev_room_center.center_x
+                prev_y = prev_room_center.center_y
+
+                if love.math.random(0, 1) == 1 then
+                    create_h_tunnel(map, prev_x, new_x, prev_y)
+                    create_v_tunnel(map, prev_y, new_y, new_x)
+                else
+                    create_v_tunnel(map, prev_y, new_y, prev_x)
+                    create_h_tunnel(map, prev_x, new_x, new_y)
+                end
+            table.insert(rooms, new_room)      
+            end
+        end
+    end
+
     return map
+end
+
+function create_room(map, room)
+    for x=room.x1+1, room.x2 do
+        for y=room.y1+1, room.y2 do
+            map[x][y].blocked = false
+            map[x][y].block_sight = false
+        end
+    end
+end
+
+function create_h_tunnel(map, x1, x2, y)
+    for x=math.min(x1, x2), math.max(x1, x2)+1 do
+        map[x][y].blocked = false
+        map[x][y].block_sight = false
+    end
+end
+
+function create_v_tunnel(map, y1, y2, x)
+    for y=math.min(y1, y2), math.max(y1, y2)+1 do
+        map[x][y].blocked = false
+        map[x][y].block_sight = false
+    end
 end
 
 function map_to_image(map)
