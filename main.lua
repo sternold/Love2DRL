@@ -14,6 +14,7 @@ MAX_ROOMS = 30
 MAX_ROOM_MONSTERS = 3
 
 --colors
+color_text = {255, 255, 255, 255}
 color_player = {200, 50, 50, 255}
 color_dark_wall = {0, 0, 200, 255}
 color_dark_ground = {100, 100, 250, 255}
@@ -26,38 +27,13 @@ player_start_x = 0
 player_start_y = 0
 worldactive = false
 objectmap = {}
-drawablemap = nil
-player = nil
 game_state = "playing"
-player_action = nil
+player_action = ""
 
 --TILE
 Tile = class("Tile")
 function Tile:initialize (blocked)
     self.blocked = blocked
-end
-
---GAMEOBJECT
-GameObject = class('GameObject')
-function GameObject:initialize(x, y, char, name, color, blocks)
-    self.x = x
-    self.y = y
-    self.char = char
-    self.name = name
-    self.color = color
-    self.blocks = blocks or false
-    self.colortext = G.newText(G.getFont(), {color, char})
-end
-
-function GameObject:move(dx, dy)
-    if not is_blocked(self.x + dx, self.y + dy) then
-        self.x = self.x + dx
-        self.y = self.y + dy
-    end
-end
-
-function GameObject:draw()
-    G.draw(self.colortext, self.x*SCALE, self.y*SCALE)
 end
 
 --RECT
@@ -78,6 +54,98 @@ end
 function Rect:intersect(other)
     return (self.x1 <= other.x2 and self.x2 >= other.x1 and self.y1 <= other.y2 and self.y2 >= other.y1)
 end
+
+--GAMEOBJECT
+GameObject = class('GameObject')
+function GameObject:initialize(x, y, char, name, color, blocks, fighter, ai)
+    self.x = x
+    self.y = y
+    self.char = char
+    self.name = name
+    self.color = color
+    self.blocks = blocks or false
+    self.fighter = fighter or nil
+    if self.fighter ~= nil then
+        self.fighter.owner = self
+    end
+    self.ai = ai or nil
+    if self.ai ~= nil then
+        self.ai.owner = self
+    end
+    self.colortext = G.newText(G.getFont(), {color, char})
+end
+
+function GameObject:move(dx, dy)
+    if not is_blocked(self.x + dx, self.y + dy) then
+        self.x = self.x + dx
+        self.y = self.y + dy
+    end
+end
+
+function GameObject:draw()
+    G.draw(self.colortext, self.x*SCALE, self.y*SCALE)
+end
+
+function GameObject:move_towards(target_x, target_y)
+    local dx = target_x - self.x
+    local dy = target_y - self.y
+    local distance = math.sqrt(math.pow(dx, 2) + math.pow(dy, 2))
+
+    --this should be round, but it's lua
+    dx = math.floor(dx / distance)
+    dy = math.floor(dy / distance)
+    self:move(dx, dy)
+end
+
+function GameObject:distance_to(other)
+    local dx = other.x - self.x
+    local dy = other.y - self.y
+    return math.sqrt(math.pow(dx, 2) + math.pow(dy, 2))
+end
+
+--FIGHTER
+Fighter = class('Fighter')
+function Fighter:initialize(hp, defense, power)
+    self.max_hp = hp
+    self.hp = hp
+    self.defense = defense
+    self.power = power
+end
+
+function Fighter:take_damage(damage)
+    if damage > 0 then
+        self.hp = self.hp - damage
+    end
+end
+
+function Fighter:attack(target)
+    damage = self.power - target.fighter.defense
+ 
+        if damage > 0 then
+            console_print(self.owner.name .. ' attacks ' .. target.name .. ' for ' .. damage .. ' hit points.')
+            target.fighter:take_damage(damage)
+        else
+            console_print(self.owner.name .. ' attacks ' .. target.name .. ' but it has no effect!')
+        end
+end
+
+--BASICMONSTER
+BasicMonster = class('BasicMonster')
+function BasicMonster:initialize()
+
+end
+
+function BasicMonster:take_turn()
+    monster = self.owner
+ 
+    if monster:distance_to(player) >= 2 then
+        monster:move_towards(player.x, player.y)
+    elseif player.fighter.hp > 0 then
+        monster.fighter:attack(player)
+    end
+end
+
+
 
 --LOVE
 function love.run()
@@ -135,9 +203,11 @@ function love.load()
     G.setFont(G.newFont("PS2P-R.ttf", SCALE))
 
     --initialize
+    console_log = {}
     make_map()
     
-    player = GameObject(player_start_x, player_start_y, "@", "player", color_player, true)
+    local fighter_component = Fighter(30, 2, 5)
+    player = GameObject(player_start_x, player_start_y, "@", "player", color_player, true, fighter_component, nil)
     table.insert(gameobjects, player)
 
     --make map into a single image
@@ -147,8 +217,8 @@ end
 function love.update(dt)
     if worldactive and game_state == "playing" and player_action ~= "didnt-take-turn" then
         for key,value in pairs(gameobjects) do 
-            if value ~= player then
-                print("the " .. value.name .. " growls!")
+            if value.ai ~= nil then
+                value.ai:take_turn()
             end 
         end
         worldactive = false
@@ -168,6 +238,9 @@ function love.draw()
     for key,value in pairs(gameobjects) do 
         value:draw()
     end
+
+    console_draw()
+    stats_draw(12, 6)
 end
 
 function love.keypressed(key)
@@ -204,6 +277,28 @@ function love.keypressed(key)
 end
 
 ---FUNCTIONS
+function console_print(string)
+    table.insert(console_log, string)
+end
+
+function console_draw()
+    local count = table.maxn(console_log)
+    local max = 1
+    if count < 5 then
+        max = count
+    else
+        max = 5
+    end
+    for i=1, max do
+        G.draw(G.newText(G.getFont(), {color_text, console_log[count + 1 - i]}), SCALE, SCREEN_HEIGHT * SCALE - SCALE * i)
+    end
+end
+
+function stats_draw(x, y)
+    local string = "HP:" .. player.fighter.hp .. "/" .. player.fighter.max_hp
+    G.draw(G.newText(G.getFont(), {color_text, string}), SCREEN_WIDTH * SCALE - SCALE * x, SCREEN_HEIGHT * SCALE - SCALE * y)
+end
+
 --MAP
 function make_map ()
     for x=1, MAP_WIDTH, 1 do
@@ -265,13 +360,13 @@ function create_room(room)
 end
 
 function create_h_tunnel(x1, x2, y)
-    for x=math.min(x1, x2), math.max(x1, x2)+1 do
+    for x=math.min(x1, x2), math.max(x1, x2) do
         objectmap[x][y].blocked = false
     end
 end
 
 function create_v_tunnel(y1, y2, x)
-    for y=math.min(y1, y2), math.max(y1, y2)+1 do
+    for y=math.min(y1, y2), math.max(y1, y2) do
         objectmap[x][y].blocked = false
     end
 end
@@ -288,10 +383,14 @@ function place_objects(room)
             local monster = nil
             if love.math.random(0, 100) < 80 then  --80% chance of getting an orc
                 --create an orc
-                monster = GameObject(x, y, "o", "Orc", color_green, true)
+                local fighter_component = Fighter(10, 0, 3)
+                local ai_component = BasicMonster()
+                monster = GameObject(x, y, "o", "Orc", color_green, true, fighter_component, ai_component)
             else 
                 --create a troll
-                monster = GameObject(x, y, "T", "Troll", color_dark_green, true)
+                local fighter_component = Fighter(16, 1, 4)
+                local ai_component = BasicMonster()
+                monster = GameObject(x, y, "T", "Troll", color_dark_green, true, fighter_component, ai_component)
             end
             table.insert(gameobjects, monster)
         end 
@@ -348,7 +447,7 @@ function player_move_or_attack(dx, dy)
     end
 
     if target ~= nil then
-        print("The " .. target.name .. " laughs at your puny efforts to attack him!")
+        player.fighter:attack(target)
     else
         player:move(dx, dy)
     end
