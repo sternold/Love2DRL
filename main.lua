@@ -93,8 +93,8 @@ function GameObject:move_towards(target_x, target_y)
     local distance = math.sqrt(math.pow(dx, 2) + math.pow(dy, 2))
 
     --this should be round, but it's lua
-    dx = math.floor(dx / distance)
-    dy = math.floor(dy / distance)
+    dx = round(dx / distance)
+    dy = round(dy / distance)
     self:move(dx, dy)
 end
 
@@ -309,7 +309,17 @@ function draw_screen()
 end
 
 ---FUNCTIONS
+function round(number)
+    local toround = number - math.floor(number)
+    if toround >= .5 then
+        return math.ceil(number)
+    else
+        return math.floor(number)
+    end
+end
+
 function console_print(string)
+    print(string)
     table.insert(console_log, string)
 end
 
