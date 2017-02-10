@@ -18,6 +18,9 @@ BAR_Y = 0
 MAX_ROOM_ITEMS = 2
 INVENTORY_WIDTH = 60
 HEAL_AMOUNT = 4
+LIGHTNING_RANGE = 5
+LIGHTNING_DAMAGE = 20
+CONFUSION_DURATION = 10
 
 --colors
 color_background = {255, 255, 255, 255}
@@ -31,7 +34,8 @@ color_dark_red = {150, 0, 0, 255}
 color_red = {250, 0, 0, 255}
 color_grey = {200, 200, 200, 255}
 color_violet = {200, 0, 150, 255}
-color_menu = {200, 200, 200, 150}
+color_menu = {200, 200, 200, 200}
+color_light_yellow = {200, 200, 0, 255}
 
 --variables
 gameobjects = {}
@@ -92,6 +96,7 @@ function GameObject:initialize(x, y, char, name, color, blocks, fighter, ai, ite
     if self.item ~= nil then
         self.item.owner = self
     end
+    self.invocations = {}
     self.colortext = G.newText(G.getFont(), {color, char})
 end
 
@@ -188,7 +193,6 @@ end
 --BASICMONSTER
 BasicMonster = class('BasicMonster')
 function BasicMonster:initialize()
-
 end
 
 function BasicMonster:take_turn()
@@ -234,6 +238,73 @@ function cast_heal()
     end
     console_print("You're starting to feel better!")
     player.fighter:heal(HEAL_AMOUNT)
+end
+
+function cast_lightning()
+    local monster = closest_monster(LIGHTNING_RANGE)
+    if monster == nil then
+        console_print("No enemy in range.")
+        return "cancelled"
+    end
+
+    console_print("A lightning bolt strikes the " .. monster.name .. ", dealing " .. LIGHTNING_DAMAGE .. " damage!")
+    monster.fighter:take_damage(LIGHTNING_DAMAGE)
+end
+
+function cast_confusion()
+    local monster = closest_monster(LIGHTNING_RANGE)
+    if monster == nil then
+        console_print("No enemy in range.")
+        return "cancelled"
+    end
+
+    console_print("The " .. monster.name .. " seems dazed and confused!")
+    add_invocation(monster, CONFUSION_DURATION, invoke_confusion)
+end
+
+--INVOCATION
+Invocation = class('Invocation')
+function Invocation:initialize(duration, invoke_function)
+    self.duration = duration
+    self.timer = 0
+    self.invoke_function = invoke_function
+end
+
+function Invocation:invoke()
+    self.invoke_function(self, true)
+    self.timer = self.timer + 1
+    if(self.timer >= self.duration) then
+        self.invoke_function(self, false)
+    end
+end
+
+function invoke_confusion(invocation, state)
+    if invocation.old_ai == nil and state then
+        invocation.old_ai = invocation.owner.ai
+        new_ai = ConfusedMonster()
+        new_ai.owner = invocation.owner 
+        invocation.owner.ai = new_ai
+    elseif not state then
+        console_print("The confusion has ended.")
+        invocation.owner.ai = invocation.old_ai
+        table.remove(invocation.owner.invocations, index_of(invocation))
+    end
+end
+
+function add_invocation(target, duration, invoke_function)
+    local inv = Invocation(duration, invoke_function)
+    inv.owner = target
+    table.insert(target.invocations, inv)
+end
+
+--CONFUSEDMONSTER
+ConfusedMonster = class('ConfusedMonster')
+function ConfusedMonster:initialize()
+end
+
+function ConfusedMonster:take_turn()
+    console_print("The " .. self.owner.name .. " stumbles around!")
+    self.owner:move(love.math.random(-1, 1), love.math.random(-1, 1))
 end
 
 --LOVE
@@ -309,6 +380,9 @@ function love.update(dt)
     if worldactive and game_state == "playing" and player_action ~= "didnt-take-turn" then
         for key,value in pairs(gameobjects) do 
             if value.ai ~= nil then
+                for k, v in pairs(value.invocations) do
+                    v:invoke()
+                end
                 value.ai:take_turn()
             end 
         end
@@ -320,7 +394,6 @@ function love.update(dt)
         love.event.quit()
     end
 end
-
 
 function love.draw()
     --draw map
@@ -459,6 +532,22 @@ function index_of(table, object)
     return nil
 end
 
+function closest_monster(max_range)
+    local closest_enemy = nil
+    local closest_dist = max_range + 1
+ 
+    for key, value in pairs(gameobjects) do
+        if value.fighter ~= nil and value ~= player then
+            dist = player:distance_to(value)
+            if dist < closest_dist then
+                closest_enemy = value
+                closest_dist = dist
+            end
+        end
+    end
+    return closest_enemy
+end
+
 --DRAWING
 function console_draw()
     local count = table.maxn(console_log)
@@ -469,13 +558,13 @@ function console_draw()
         max = 5
     end
     for i=1, max do
-        G.draw(G.newText(G.getFont(), {color_text, console_log[count + 1 - i]}), SCALE, SCREEN_HEIGHT * SCALE - SCALE * i)
+        G.draw(G.newText(G.getFont(), {color_text, console_log[count + 1 - i]}), SCALE, SCREEN_HEIGHT * SCALE - 1 - SCALE * i)
     end
 end
 
 function stats_draw()
     --HP
-    bar_draw(2, BAR_Y, BAR_WIDTH, "HP", player.fighter.hp, player.fighter.max_hp, color_red, color_grey)
+    bar_draw(1, BAR_Y, BAR_WIDTH, "HP", player.fighter.hp, player.fighter.max_hp, color_red, color_grey)
     
 end
 
@@ -607,10 +696,19 @@ function place_objects(room)
  
         --only place it if the tile is not blocked
         if not is_blocked(x, y) then
-            --create a healing potion
-            local item_component = Item(cast_heal)
-            local item = GameObject(x, y, '!', 'healing potion', color_violet, false, nil, nil, item_component)
- 
+            local item = nil
+
+            dice = love.math.random(0, 100)
+            if dice < 20 then
+                local item_component = Item(cast_heal)
+                item = GameObject(x, y, '!', 'healing potion', color_violet, false, nil, nil, item_component)
+            elseif dice > 20 and dice < 40 then
+                local item_component = Item(cast_confusion)
+                item = GameObject(x, y, '#', 'Scroll of Confusion', color_violet, false, nil, nil, item_component)   
+            else
+                local item_component = Item(cast_lightning)
+                item = GameObject(x, y, '#', 'Scroll of Lighning Bolt', color_light_yellow, false, nil, nil, item_component)
+            end
             table.insert(gameobjects, item)
         end
     end
