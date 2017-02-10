@@ -21,6 +21,7 @@ HEAL_AMOUNT = 4
 LIGHTNING_RANGE = 5
 LIGHTNING_DAMAGE = 20
 CONFUSION_DURATION = 10
+FIREBALL_DAMAGE = 30
 
 --colors
 color_background = {255, 255, 255, 255}
@@ -36,6 +37,7 @@ color_grey = {200, 200, 200, 255}
 color_violet = {200, 0, 150, 255}
 color_menu = {200, 200, 200, 200}
 color_light_yellow = {200, 200, 0, 255}
+color_dark_yellow = {125, 125, 0, 245}
 
 --variables
 gameobjects = {}
@@ -47,6 +49,8 @@ game_state = "playing"
 player_action = ""
 menu_active = false
 monster_count = 0
+aimable_spell = nil
+direction = "none"
 
 inventory = {}
 
@@ -170,7 +174,7 @@ end
 
 function player_death(target)
     game_state = "dead"
-    console_print("You died!")
+    console_print("Death is inevitable.")
 
     target.char = '%'
     target.color = color_dark_red
@@ -231,6 +235,14 @@ function Item:use()
     end
 end
 
+function Item:drop()
+    table.insert(gameobjects, self.owner)
+    table.remove(inventory, index_of(self.owner))
+    self.owner.x = player.x
+    self.owner.y = player.y
+    console_print("you dropped a " .. self.owner.name .. ".")
+end
+
 function cast_heal()
     if player.fighter.hp == player.fighter.max_hp then
         console_print("You're already at full health")
@@ -249,6 +261,31 @@ function cast_lightning()
 
     console_print("A lightning bolt strikes the " .. monster.name .. ", dealing " .. LIGHTNING_DAMAGE .. " damage!")
     monster.fighter:take_damage(LIGHTNING_DAMAGE)
+end
+
+function cast_fireball()
+    game_state = "aiming"
+    if direction == "none" then
+        aimable_spell = cast_fireball
+    else
+        target = find_target(direction)
+        if target == "wrong_direction" then
+            console_print("Wrong key.")
+        elseif target ~= nil then
+            console_print("The " .. target.name .. "takes 30 fire damage!")
+            target.fighter:take_damage(FIREBALL_DAMAGE)
+            game_state = "playing"
+            direction = "none"
+            aimable_spell = nil
+            draw_screen()
+        else
+            console_print("The fireball splashes against the wall.")
+            game_state = "playing"
+            direction = "none"
+            aimable_spell = nil
+            draw_screen()
+        end
+    end
 end
 
 function cast_confusion()
@@ -388,7 +425,17 @@ function love.update(dt)
         end
         draw_screen()
         worldactive = false
+    elseif game_state == "casting" then
+        if aimable_spell ~= nil then
+            aimable_spell()
+        end
     end
+
+    if monster_count == 0 then
+        rect_draw("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, {0,0,0,200})
+        console_print("A WINNER IS YOU!")
+        G.draw(G.newText(G.getFont(), {color_text, "A WINNER IS YOU!"}), ((round(SCREEN_WIDTH / 2)) - 10) * SCALE, (round(SCREEN_HEIGHT / 2)) * SCALE)
+    end 
 
     if player_action == "exit" then
         love.event.quit()
@@ -412,27 +459,32 @@ function love.draw()
 
     if game_state == "menu" then
         inventory_menu(player.name .. "'s Inventory")
+    elseif game_state == "aiming" then
+        if direction == "up" then
+            text_draw(color_dark_yellow, "*", player.x, player.y - 1)
+        elseif direction == "down" then
+            text_draw(color_dark_yellow, "*", player.x, player.y + 1)
+        elseif direction == "left" then
+            text_draw(color_dark_yellow, "*", player.x - 1, player.y)
+        elseif direction == "right" then
+            text_draw(color_dark_yellow, "*", player.x + 1, player.y)
+        end
     end
-
-    if monster_count == 0 then
-        rect_draw("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, {0,0,0,200})
-        G.draw(G.newText(G.getFont(), {color_text, "A WINNER IS YOU!"}), ((round(SCREEN_WIDTH / 2)) - 10) * SCALE, (round(SCREEN_HEIGHT / 2)) * SCALE)
-    end 
 end
 
 function love.keypressed(key)
     if game_state == "playing" then
         worldactive = true
-        if key == "a" or key == "left" then
+        if key == "left" then
             player_move_or_attack(-1, 0)
             player_action = "left"
-        elseif key == "d" or key == "right" then
+        elseif key == "right" then
             player_move_or_attack(1, 0)
             player_action = "right"
-        elseif key == "w" or key == "up" then
+        elseif key == "up" then
             player_move_or_attack(0, -1)
             player_action = "up"
-        elseif key == "s" or key == "down" then
+        elseif key == "down" then
             player_move_or_attack(0, 1)
             player_action = "down"
         elseif key == "g" then
@@ -449,18 +501,40 @@ function love.keypressed(key)
         end
     elseif game_state == "menu" then
         if inventory[index_of(ALPHABET, key)] ~= nil then
-            inventory[index_of(ALPHABET, key)].item:use();
+            if player_action == "inventory" then
+                game_state = "playing"
+                inventory[index_of(ALPHABET, key)].item:use();
+                draw_screen()
+            elseif player_action == "drop" then
+                game_state = "playing"
+                inventory[index_of(ALPHABET, key)].item:drop();
+                draw_screen()
+            end
+            player_action = "didnt-take-turn"
+        else 
             game_state = "playing"
             draw_screen()
         end
+    elseif game_state == "aiming" then
+        if key == "c" then
+            game_state = "casting"
+        else
+            direction = key
+        end
+        draw_screen()
     end
     if key == "escape" then
         player_action = "exit"
     elseif key == "i" then
         if game_state == "playing" then
             game_state = "menu"
-        elseif game_state == "menu" then
-            game_state = "playing"
+            player_action = "inventory"
+        end
+        draw_screen()
+    elseif key == "d" then
+        if game_state == "playing" then
+            game_state = "menu"
+            player_action = "drop"
         end
         draw_screen()
     end
@@ -548,6 +622,56 @@ function closest_monster(max_range)
     return closest_enemy
 end
 
+function find_target(direction)
+    if direction == "up" then
+        for y = player.y, 0, -1 do
+            if objectmap[player.x][y].blocked then
+                break
+            end
+            for k, v in pairs(gameobjects) do
+                if v.x == player.x and v.y == y and v.ai ~= nil then
+                    return v
+                end
+            end
+        end
+    elseif direction == "down" then
+        for y = player.y, MAP_HEIGHT do
+            if objectmap[player.x][y].blocked then
+                break
+            end
+            for k, v in pairs(gameobjects) do
+                if v.x == player.x and v.y == y and v.ai ~= nil then
+                    return v
+                end
+            end
+        end
+    elseif direction == "left" then
+        for x = player.x, 0, -1 do
+            if objectmap[x][player.y].blocked then
+                break
+            end
+            for k, v in pairs(gameobjects) do
+                if v.x == x and v.y == player.y and v.ai ~= nil then
+                    return v
+                end
+            end
+        end
+    elseif direction == "right" then
+        for x = player.x, MAP_WIDTH do
+            if objectmap[x][player.y].blocked then
+                break
+            end
+            for k, v in pairs(gameobjects) do
+                if v.x == x and v.y == player.y and v.ai ~= nil then
+                    return v
+                end
+            end
+        end
+    else
+        return 'wrong_direction'
+    end
+end
+
 --DRAWING
 function console_draw()
     local count = table.maxn(console_log)
@@ -586,6 +710,10 @@ function rect_draw(mode, x, y, w, h, color)
     G.setColor(color)
     G.rectangle(mode, x * SCALE, y * SCALE, w * SCALE, h * SCALE)
     G.setColor(color_background)
+end
+
+function text_draw(color, text, x, y)
+    G.draw(G.newText(G.getFont(), {color, text}), x * SCALE, y * SCALE)
 end
 
 --MAP
@@ -699,12 +827,15 @@ function place_objects(room)
             local item = nil
 
             dice = love.math.random(0, 100)
-            if dice < 20 then
+            if dice < 40 then
                 local item_component = Item(cast_heal)
                 item = GameObject(x, y, '!', 'healing potion', color_violet, false, nil, nil, item_component)
-            elseif dice > 20 and dice < 40 then
+            elseif dice > 40 and dice < 50 then
                 local item_component = Item(cast_confusion)
                 item = GameObject(x, y, '#', 'Scroll of Confusion', color_violet, false, nil, nil, item_component)   
+            elseif dice > 50 and dice < 75 then
+                local item_component = Item(cast_fireball)
+                item = GameObject(x, y, '#', 'Scroll of Fireball', color_dark_red, false, nil, nil, item_component)   
             else
                 local item_component = Item(cast_lightning)
                 item = GameObject(x, y, '#', 'Scroll of Lighning Bolt', color_light_yellow, false, nil, nil, item_component)

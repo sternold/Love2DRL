@@ -5,8 +5,10 @@ This is a roguelike created following [this tutorial.](http://www.roguebasin.com
 ## How To Play
 * Press the Arrow keys to move around.
 * Press G to pick up items.
-* Press I to open and close your inventory.
-* Press the corresponding letter to use an item.
+* Press I to open your inventory.
+* Press D to drop an item.
+* Press the corresponding letter to use/drop an item.
+* While casting aimable spells, press the arrow keys to aim, and C to cast.
 * Press ESC to exit.
 
 ## Credits
