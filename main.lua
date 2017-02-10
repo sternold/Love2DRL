@@ -12,8 +12,12 @@ ROOM_MAX_SIZE = 10
 ROOM_MIN_SIZE = 6
 MAX_ROOMS = 30
 MAX_ROOM_MONSTERS = 3
+BAR_WIDTH = 20
+BAR_Y = 0
+MAX_ROOM_ITEMS = 2
 
 --colors
+color_background = {255, 255, 255, 255}
 color_text = {255, 255, 255, 255}
 color_player = {200, 50, 50, 255}
 color_dark_wall = {0, 0, 200, 255}
@@ -21,6 +25,9 @@ color_dark_ground = {100, 100, 250, 255}
 color_green = {0, 250, 0, 255}
 color_dark_green = {0, 150, 0, 255}
 color_dark_red = {150, 0, 0, 255}
+color_red = {250, 0, 0, 255}
+color_grey = {200, 200, 200, 255}
+color_violet = {200, 0, 150, 255}
 
 --variables
 gameobjects = {}
@@ -30,6 +37,8 @@ worldactive = false
 objectmap = {}
 game_state = "playing"
 player_action = ""
+
+inventory = {}
 
 --TILE
 Tile = class("Tile")
@@ -58,7 +67,7 @@ end
 
 --GAMEOBJECT
 GameObject = class('GameObject')
-function GameObject:initialize(x, y, char, name, color, blocks, fighter, ai)
+function GameObject:initialize(x, y, char, name, color, blocks, fighter, ai, item)
     self.x = x
     self.y = y
     self.char = char
@@ -72,6 +81,10 @@ function GameObject:initialize(x, y, char, name, color, blocks, fighter, ai)
     self.ai = ai or nil
     if self.ai ~= nil then
         self.ai.owner = self
+    end
+    self.item = item or nil
+    if self.item ~= nil then
+        self.item.owner = self
     end
     self.colortext = G.newText(G.getFont(), {color, char})
 end
@@ -174,6 +187,26 @@ function BasicMonster:take_turn()
     end
 end
 
+--ITEM
+Item = class('Item')
+function Item:initialize()
+
+end
+
+function Item:pick_up()
+    if table.maxn(inventory) >= 26 then
+        console_print("Your inventory is full.")
+    else
+        table.insert(inventory, self.owner)
+        for key, value in pairs(gameobjects) do
+            if value == self.owner then
+                table.remove(gameobjects, key)
+                break
+            end
+        end
+        console_print("You picked up a " .. self.owner.name .. "!")
+    end
+end
 
 
 --LOVE
@@ -241,6 +274,8 @@ function love.load()
 
     --make map into a single image
     drawablemap = map_to_image(objectmap)
+
+    console_print("Welcome stranger, be prepared to perish in the tombs of LOVE!")
 end
 
 function love.update(dt)
@@ -250,6 +285,7 @@ function love.update(dt)
                 value.ai:take_turn()
             end 
         end
+        draw_screen()
         worldactive = false
     end
 
@@ -265,17 +301,17 @@ function love.draw()
 
     --draw player
     for key,value in pairs(gameobjects) do 
-        value:draw()
+        if value ~= player then
+            value:draw()
+        end
     end
+    player:draw()
 
     console_draw()
-    stats_draw(12, 6)
+    stats_draw()
 end
 
 function love.keypressed(key)
-    if key == "escape" then
-            player_action = "exit"
-    end
     if game_state == "playing" then
         worldactive = true
         if key == "a" or key == "left" then
@@ -290,11 +326,21 @@ function love.keypressed(key)
         elseif key == "s" or key == "down" then
             player_move_or_attack(0, 1)
             player_action = "down"
+        elseif key == "g" then
+            for key, value in pairs(gameobjects) do
+                if value.item ~= nil and value.x == player.x and value.y == player.y then
+                    value.item:pick_up()
+                    break
+                end
+            end
+            player_action = "pickup"
         else
             worldactive = false
             player_action = "didnt-take-turn"
         end
-        draw_screen()
+    end
+    if key == "escape" then
+        player_action = "exit"
     end
 end
 
@@ -336,9 +382,28 @@ function console_draw()
     end
 end
 
-function stats_draw(x, y)
-    local string = "HP:" .. player.fighter.hp .. "/" .. player.fighter.max_hp
-    G.draw(G.newText(G.getFont(), {color_text, string}), SCREEN_WIDTH * SCALE - SCALE * x, SCREEN_HEIGHT * SCALE - SCALE * y)
+function stats_draw()
+    --HP
+    bar_draw(2, BAR_Y, BAR_WIDTH, "HP", player.fighter.hp, player.fighter.max_hp, color_red, color_grey)
+    
+end
+
+function bar_draw(x, y, total_width, name, value, maximum, bar_color, back_color)
+    --render a bar (HP, experience, etc). first calculate the width of the bar
+    local bar_width = round(value / maximum * total_width)
+ 
+    --render the background first
+    G.setColor(back_color)
+    G.rectangle("fill", x * SCALE, y * SCALE, total_width * SCALE, SCALE)
+    G.setColor(color_background)
+ 
+    --now render the bar on top
+    G.setColor(bar_color)
+    G.rectangle("fill", x * SCALE, y * SCALE, bar_width * SCALE, SCALE)
+    G.setColor(color_background)   
+
+    local string = name .. ": " .. value .. "/" .. maximum
+    G.draw(G.newText(G.getFont(), {color_text, string}), x * SCALE, y * SCALE + 4)
 end
 
 --MAP
@@ -418,8 +483,8 @@ function place_objects(room)
 
     for i=0, num_monsters do
         --choose random spot for this monster
-        local x = love.math.random(room.x1, room.x2)
-        local y = love.math.random(room.y1, room.y2)
+        local x = love.math.random(room.x1+1, room.x2-1)
+        local y = love.math.random(room.y1+1, room.y2-1)
         
          if not is_blocked(x, y) then
             local monster = nil
@@ -436,6 +501,24 @@ function place_objects(room)
             end
             table.insert(gameobjects, monster)
         end 
+    end
+
+    --choose random number of items
+    local num_items = love.math.random(0, MAX_ROOM_ITEMS)
+ 
+    for i=0, num_items do
+        --choose random spot for this item
+        local x = love.math.random(room.x1+1, room.x2-1)
+        local y = love.math.random(room.y1+1, room.y2-1)
+ 
+        --only place it if the tile is not blocked
+        if not is_blocked(x, y) then
+            --create a healing potion
+            local item_component = Item()
+            local item = GameObject(x, y, '!', 'healing potion', color_violet, false, nil, nil, item_component)
+ 
+            table.insert(gameobjects, item)
+        end
     end
 end
 
