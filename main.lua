@@ -3,6 +3,7 @@ local class = require "lib//middleclass"
 local G = love.graphics
 
 --constants
+ALPHABET = {"a", "b", "c", "d", "e", "f","g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"}
 SCALE = 16
 SCREEN_WIDTH = 80
 SCREEN_HEIGHT = 50
@@ -11,10 +12,12 @@ MAP_HEIGHT = 43
 ROOM_MAX_SIZE = 10
 ROOM_MIN_SIZE = 6
 MAX_ROOMS = 30
-MAX_ROOM_MONSTERS = 3
+MAX_ROOM_MONSTERS = 2
 BAR_WIDTH = 20
 BAR_Y = 0
 MAX_ROOM_ITEMS = 2
+INVENTORY_WIDTH = 60
+HEAL_AMOUNT = 4
 
 --colors
 color_background = {255, 255, 255, 255}
@@ -28,6 +31,7 @@ color_dark_red = {150, 0, 0, 255}
 color_red = {250, 0, 0, 255}
 color_grey = {200, 200, 200, 255}
 color_violet = {200, 0, 150, 255}
+color_menu = {200, 200, 200, 150}
 
 --variables
 gameobjects = {}
@@ -37,6 +41,8 @@ worldactive = false
 objectmap = {}
 game_state = "playing"
 player_action = ""
+menu_active = false
+monster_count = 0
 
 inventory = {}
 
@@ -150,6 +156,13 @@ function Fighter:attack(target)
         end
 end
 
+function Fighter:heal(amount)
+    self.hp = self.hp + amount
+    if self.hp > self.max_hp then
+        self.hp = self.max_hp
+    end
+end
+
 function player_death(target)
     game_state = "dead"
     console_print("You died!")
@@ -169,6 +182,7 @@ function monster_death(target)
     target.fighter = nil
     target.ai = nil
     target.name = 'remains of ' .. monster.name
+    monster_count = monster_count - 1
 end
 
 --BASICMONSTER
@@ -189,8 +203,8 @@ end
 
 --ITEM
 Item = class('Item')
-function Item:initialize()
-
+function Item:initialize(use_function)
+    self.use_function = use_function
 end
 
 function Item:pick_up()
@@ -198,16 +212,29 @@ function Item:pick_up()
         console_print("Your inventory is full.")
     else
         table.insert(inventory, self.owner)
-        for key, value in pairs(gameobjects) do
-            if value == self.owner then
-                table.remove(gameobjects, key)
-                break
-            end
-        end
+        table.remove(gameobjects, index_of(gameobjects, self.owner))
         console_print("You picked up a " .. self.owner.name .. "!")
     end
 end
 
+function Item:use()
+    if self.use_function ~= nil then
+        if self.use_function() ~= "cancelled" then
+            table.remove(inventory, index_of(inventory, self.owner))
+        end
+    else
+        console_print("The " .. self.owner.name .. " cannot be used.")
+    end
+end
+
+function cast_heal()
+    if player.fighter.hp == player.fighter.max_hp then
+        console_print("You're already at full health")
+        return "cancelled"
+    end
+    console_print("You're starting to feel better!")
+    player.fighter:heal(HEAL_AMOUNT)
+end
 
 --LOVE
 function love.run()
@@ -309,6 +336,15 @@ function love.draw()
 
     console_draw()
     stats_draw()
+
+    if game_state == "menu" then
+        inventory_menu(player.name .. "'s Inventory")
+    end
+
+    if monster_count == 0 then
+        rect_draw("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, {0,0,0,200})
+        G.draw(G.newText(G.getFont(), {color_text, "A WINNER IS YOU!"}), ((round(SCREEN_WIDTH / 2)) - 10) * SCALE, (round(SCREEN_HEIGHT / 2)) * SCALE)
+    end 
 end
 
 function love.keypressed(key)
@@ -338,9 +374,22 @@ function love.keypressed(key)
             worldactive = false
             player_action = "didnt-take-turn"
         end
+    elseif game_state == "menu" then
+        if inventory[index_of(ALPHABET, key)] ~= nil then
+            inventory[index_of(ALPHABET, key)].item:use();
+            game_state = "playing"
+            draw_screen()
+        end
     end
     if key == "escape" then
         player_action = "exit"
+    elseif key == "i" then
+        if game_state == "playing" then
+            game_state = "menu"
+        elseif game_state == "menu" then
+            game_state = "playing"
+        end
+        draw_screen()
     end
 end
 
@@ -355,6 +404,8 @@ function draw_screen()
 end
 
 ---FUNCTIONS
+
+--MISC
 function round(number)
     local toround = number - math.floor(number)
     if toround >= .5 then
@@ -369,6 +420,46 @@ function console_print(string)
     table.insert(console_log, string)
 end
 
+function menu(header, options, width)
+    if table.maxn(options) > 26 then
+        error("Cannot have a menu with more than 26 options")
+    end
+    local x = 2
+    local y = 2
+    local height = table.maxn(options) + 2
+    rect_draw("fill", x, y, width, height, color_menu)
+    rect_draw("line", x, y, width, height, color_text)
+
+    G.draw(G.newText(G.getFont(), {color_text, header}), x * SCALE + 4, y * SCALE + 4)
+
+    for i=1, table.maxn(options) do
+        text = "(" .. ALPHABET[i] .. ") " .. options[i]
+        G.draw(G.newText(G.getFont(), {color_text, text}), x * SCALE + 4, (y + i) * SCALE + 4)
+    end
+end
+
+function inventory_menu(header)
+    local options = {}
+    if table.maxn(inventory) ==0 then
+        table.insert(options, "Inventory is empty.")
+    else
+        for key, value in pairs(inventory) do
+            table.insert(options, value.name)
+        end
+    end
+    menu(header, options, INVENTORY_WIDTH)
+end
+
+function index_of(table, object)
+    for key, value in pairs(table) do
+        if value == object then
+            return key
+        end
+    end
+    return nil
+end
+
+--DRAWING
 function console_draw()
     local count = table.maxn(console_log)
     local max = 1
@@ -393,21 +484,23 @@ function bar_draw(x, y, total_width, name, value, maximum, bar_color, back_color
     local bar_width = round(value / maximum * total_width)
  
     --render the background first
-    G.setColor(back_color)
-    G.rectangle("fill", x * SCALE, y * SCALE, total_width * SCALE, SCALE)
-    G.setColor(color_background)
+    rect_draw("fill", x, y, total_width, 1, back_color)
  
     --now render the bar on top
-    G.setColor(bar_color)
-    G.rectangle("fill", x * SCALE, y * SCALE, bar_width * SCALE, SCALE)
-    G.setColor(color_background)   
+    rect_draw("fill", x, y, bar_width, 1, bar_color)
 
     local string = name .. ": " .. value .. "/" .. maximum
     G.draw(G.newText(G.getFont(), {color_text, string}), x * SCALE, y * SCALE + 4)
 end
 
+function rect_draw(mode, x, y, w, h, color)
+    G.setColor(color)
+    G.rectangle(mode, x * SCALE, y * SCALE, w * SCALE, h * SCALE)
+    G.setColor(color_background)
+end
+
 --MAP
-function make_map ()
+function make_map()
     for x=1, MAP_WIDTH, 1 do
         table.insert(objectmap, x, {}) 
         for y=1, MAP_HEIGHT, 1 do
@@ -499,6 +592,7 @@ function place_objects(room)
                 local ai_component = BasicMonster()
                 monster = GameObject(x, y, "T", "Troll", color_dark_green, true, fighter_component, ai_component)
             end
+            monster_count = monster_count + 1
             table.insert(gameobjects, monster)
         end 
     end
@@ -514,7 +608,7 @@ function place_objects(room)
         --only place it if the tile is not blocked
         if not is_blocked(x, y) then
             --create a healing potion
-            local item_component = Item()
+            local item_component = Item(cast_heal)
             local item = GameObject(x, y, '!', 'healing potion', color_violet, false, nil, nil, item_component)
  
             table.insert(gameobjects, item)
