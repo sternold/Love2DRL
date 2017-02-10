@@ -20,6 +20,7 @@ color_dark_wall = {0, 0, 200, 255}
 color_dark_ground = {100, 100, 250, 255}
 color_green = {0, 250, 0, 255}
 color_dark_green = {0, 150, 0, 255}
+color_dark_red = {150, 0, 0, 255}
 
 --variables
 gameobjects = {}
@@ -105,21 +106,28 @@ end
 
 --FIGHTER
 Fighter = class('Fighter')
-function Fighter:initialize(hp, defense, power)
+function Fighter:initialize(hp, defense, power, death_function)
     self.max_hp = hp
     self.hp = hp
     self.defense = defense
     self.power = power
+    self.death_function = death_function or nil
 end
 
 function Fighter:take_damage(damage)
     if damage > 0 then
         self.hp = self.hp - damage
+        if self.hp <= 0 then
+            dfunc = self.death_function
+            if dfunc ~= nil then
+                dfunc(self.owner)
+            end
+        end
     end
 end
 
 function Fighter:attack(target)
-    damage = self.power - target.fighter.defense
+    local damage = self.power - target.fighter.defense
  
         if damage > 0 then
             console_print(self.owner.name .. ' attacks ' .. target.name .. ' for ' .. damage .. ' hit points.')
@@ -127,6 +135,27 @@ function Fighter:attack(target)
         else
             console_print(self.owner.name .. ' attacks ' .. target.name .. ' but it has no effect!')
         end
+end
+
+function player_death(target)
+    game_state = "dead"
+    console_print("You died!")
+
+    target.char = '%'
+    target.color = color_dark_red
+    target.colortext = G.newText(G.getFont(),{target.color, target.char})
+    draw_screen()
+end
+
+function monster_death(target)
+    console_print(target.name .. ' is dead!')
+    target.char = '%'
+    target.color = color_dark_red
+    target.colortext = G.newText(G.getFont(),{target.color, target.char})
+    target.blocks = false
+    target.fighter = nil
+    target.ai = nil
+    target.name = 'remains of ' .. monster.name
 end
 
 --BASICMONSTER
@@ -206,7 +235,7 @@ function love.load()
     console_log = {}
     make_map()
     
-    local fighter_component = Fighter(30, 2, 5)
+    local fighter_component = Fighter(30, 2, 5, player_death)
     player = GameObject(player_start_x, player_start_y, "@", "player", color_player, true, fighter_component, nil)
     table.insert(gameobjects, player)
 
@@ -244,12 +273,12 @@ function love.draw()
 end
 
 function love.keypressed(key)
+    if key == "escape" then
+            player_action = "exit"
+    end
     if game_state == "playing" then
         worldactive = true
-
-        if key == "escape" then
-            player_action = "exit"
-        elseif key == "a" or key == "left" then
+        if key == "a" or key == "left" then
             player_move_or_attack(-1, 0)
             player_action = "left"
         elseif key == "d" or key == "right" then
@@ -264,15 +293,18 @@ function love.keypressed(key)
         else
             worldactive = false
             player_action = "didnt-take-turn"
-        end     
-        
-        --draw screen when moving
-        if love.graphics and love.graphics.isActive() then
-            love.graphics.clear(love.graphics.getBackgroundColor())
-            love.graphics.origin()
-            if love.draw then love.draw() end
-            love.graphics.present()
         end
+        draw_screen()
+    end
+end
+
+function draw_screen()
+    --draw screen when moving
+    if love.graphics and love.graphics.isActive() then
+        love.graphics.clear(love.graphics.getBackgroundColor())
+        love.graphics.origin()
+        if love.draw then love.draw() end
+        love.graphics.present()
     end
 end
 
@@ -383,12 +415,12 @@ function place_objects(room)
             local monster = nil
             if love.math.random(0, 100) < 80 then  --80% chance of getting an orc
                 --create an orc
-                local fighter_component = Fighter(10, 0, 3)
+                local fighter_component = Fighter(10, 0, 3, monster_death)
                 local ai_component = BasicMonster()
                 monster = GameObject(x, y, "o", "Orc", color_green, true, fighter_component, ai_component)
             else 
                 --create a troll
-                local fighter_component = Fighter(16, 1, 4)
+                local fighter_component = Fighter(16, 1, 4, monster_death)
                 local ai_component = BasicMonster()
                 monster = GameObject(x, y, "T", "Troll", color_dark_green, true, fighter_component, ai_component)
             end
@@ -440,7 +472,7 @@ function player_move_or_attack(dx, dy)
 
     local target = nil
     for key,value in pairs(gameobjects) do 
-        if value.x == x and value.y == y then
+        if value.fighter ~= nil and value.x == x and value.y == y then
             target = value
             break
         end
