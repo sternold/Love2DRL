@@ -7,9 +7,12 @@ This is a roguelike created following [this tutorial.](http://www.roguebasin.com
 * Press G to pick up items.
 * Press I to open your inventory.
 * Press D to drop an item.
-* Press the corresponding letter to use/drop an item.
+* Press the corresponding letter to select an option inside a menu.
 * While casting aimable spells, press the arrow keys to aim, and C to cast.
 * Press ESC to exit.
+
+## To Do
+* Saving and loading has yet to be implemented.
 
 ## Credits
 * [middleclass](https://github.com/kikito/middleclass) by Kikito

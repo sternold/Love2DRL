@@ -513,6 +513,8 @@ function love.keypressed(key)
             choice = index_of(ALPHABET, key)
             if choice == 1 then
                 new_game()
+            elseif choice == 2 then
+                --TODO: Saving and loading
             elseif choice == 3 then
                 player_action = "exit"
             end
@@ -621,7 +623,7 @@ function inventory_menu(header)
 end
 
 function main_menu()
-    menu("", {"New Game", "Continue", "Quit"}, 24)
+    menu("TOMB OF KING LOVE by Sternold", {"New Game", "Continue", "Quit"}, 31)
 end
 
 function index_of(table, object)
