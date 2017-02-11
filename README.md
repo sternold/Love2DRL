@@ -14,7 +14,6 @@ This is a roguelike created following [this tutorial.](http://www.roguebasin.com
 * Press ESC to exit.
 
 ## To Do
-* Saving and loading has yet to be implemented.
 * FOV has minor issues where it doesn't draw the outermost walls.
 
 ## Credits
