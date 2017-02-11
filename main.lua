@@ -4,7 +4,7 @@ local G = love.graphics
 
 --constants
 ALPHABET = {"a", "b", "c", "d", "e", "f","g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"}
-DIRECTION = {{0, -1}, {0,1}, {-1,0}, {1,0},{-1,-1},{1,-1},{-1,1},{1,1}}
+DIRECTION = {{0, -1}, {0,1}, {-1,0}, {1,0},{-1,-1},{1,-1},{-1,1},{1,1},{0,0}}
 SCALE = 16
 SCREEN_WIDTH = 80
 SCREEN_HEIGHT = 50
@@ -13,33 +13,35 @@ MAP_HEIGHT = 43
 ROOM_MAX_SIZE = 10
 ROOM_MIN_SIZE = 6
 MAX_ROOMS = 30
-MAX_ROOM_MONSTERS = 2
+MAX_ROOM_MONSTERS = 3
 BAR_WIDTH = 20
-BAR_Y = 0
+STAT_Y = 0
 MAX_ROOM_ITEMS = 2
 INVENTORY_WIDTH = 60
-PLAYER_VISIBLE_RANGE = 10
-HEAL_AMOUNT = 4
-SPELL_RANGE = 5
+PLAYER_VISIBLE_RANGE = 20
+HEAL_AMOUNT = 5
+SPELL_RANGE = 6
 LIGHTNING_DAMAGE = 20
 CONFUSION_DURATION = 10
-FIREBALL_DAMAGE = 30
+FIREBALL_DAMAGE = 10
+LEVEL_UP_BASE = 200
+LEVEL_UP_FACTOR = 150
 
 --colors
-color_background = {255, 255, 255, 255}
-color_text = {255, 255, 255, 255}
 color_player = {200, 50, 50, 255}
-color_dark_wall = {0, 0, 200, 255}
-color_dark_ground = {100, 100, 250, 255}
+color_black = {255, 255, 255, 255}
+color_white = {255, 255, 255, 255}
 color_green = {0, 250, 0, 255}
 color_dark_green = {0, 150, 0, 255}
-color_dark_red = {150, 0, 0, 255}
 color_red = {250, 0, 0, 255}
-color_grey = {200, 200, 200, 255}
-color_violet = {200, 0, 150, 255}
-color_menu = {200, 200, 200, 200}
-color_light_yellow = {200, 200, 0, 255}
+color_dark_red = {150, 0, 0, 255}
+color_blue = {25, 25, 250, 255}
+color_dark_blue = {10, 10, 150, 255}
+color_yellow = {200, 200, 0, 255}
 color_dark_yellow = {125, 125, 0, 245}
+color_violet = {200, 0, 150, 255}
+color_grey = {200, 200, 200, 255}
+color_grey_translucent = {200, 200, 200, 200}
 
 --fog of war
 fog_dark = {0, 0, 0, 255}
@@ -55,9 +57,10 @@ objectmap = {}
 game_state = ""
 player_action = ""
 menu_active = false
-monster_count = 0
+monster_count = -1
 aimable_spell = nil
 direction = "none"
+dungeon_level = 1
 
 inventory = {}
 
@@ -145,11 +148,12 @@ end
 
 --FIGHTER
 Fighter = class('Fighter')
-function Fighter:initialize(hp, defense, power, death_function)
+function Fighter:initialize(hp, defense, power, xp, death_function)
     self.max_hp = hp
     self.hp = hp
     self.defense = defense
     self.power = power
+    self.xp = xp
     self.death_function = death_function or nil
 end
 
@@ -193,7 +197,8 @@ function player_death(target)
 end
 
 function monster_death(target)
-    console_print(target.name .. ' is dead!')
+    console_print(target.name .. ' is dead!', color_dark_red)
+    player.fighter.xp = player.fighter.xp + target.fighter.xp
     target.char = '%'
     target.color = color_dark_red
     target.colortext = G.newText(G.getFont(),{target.color, target.char})
@@ -202,6 +207,7 @@ function monster_death(target)
     target.ai = nil
     target.name = 'remains of ' .. monster.name
     monster_count = monster_count - 1
+    check_level_up()
 end
 
 --BASICMONSTER
@@ -231,7 +237,7 @@ function Item:pick_up()
     else
         table.insert(inventory, self.owner)
         table.remove(gameobjects, index_of(gameobjects, self.owner))
-        console_print("You picked up a " .. self.owner.name .. "!")
+        console_print("You picked up a " .. self.owner.name .. "!", self.owner.color)
     end
 end
 
@@ -250,15 +256,15 @@ function Item:drop()
     table.remove(inventory, index_of(self.owner))
     self.owner.x = player.x
     self.owner.y = player.y
-    console_print("you dropped a " .. self.owner.name .. ".")
+    console_print("you dropped a " .. self.owner.name .. ".", self.owner.color)
 end
 
 function cast_heal()
     if player.fighter.hp == player.fighter.max_hp then
-        console_print("You're already at full health")
+        console_print("You're already at full health.", color_green)
         return "cancelled"
     end
-    console_print("You're starting to feel better!")
+    console_print("You're starting to feel better!", color_violet)
     player.fighter:heal(HEAL_AMOUNT)
 end
 
@@ -269,7 +275,7 @@ function cast_lightning()
         return "cancelled"
     end
 
-    console_print("A lightning bolt strikes the " .. monster.name .. ", dealing " .. LIGHTNING_DAMAGE .. " damage!")
+    console_print("A lightning bolt strikes the " .. monster.name .. ", dealing " .. LIGHTNING_DAMAGE .. " damage!", color_yellow)
     monster.fighter:take_damage(LIGHTNING_DAMAGE)
 end
 
@@ -282,7 +288,7 @@ function cast_fireball()
         if target == "wrong_direction" then
             console_print("Wrong key.")
         elseif target ~= nil then
-            console_print("The " .. target.name .. " takes 30 fire damage!")
+            console_print("The " .. target.name .. " takes " .. FIREBALL_DAMAGE .. " fire damage!", color_red)
             target.fighter:take_damage(FIREBALL_DAMAGE)
             game_state = "playing"
             direction = "none"
@@ -305,7 +311,7 @@ function cast_confusion()
         return "cancelled"
     end
 
-    console_print("The " .. monster.name .. " seems dazed and confused!")
+    console_print("The " .. monster.name .. " seems dazed and confused!", color_violet)
     add_invocation(monster, CONFUSION_DURATION, invoke_confusion)
 end
 
@@ -332,7 +338,7 @@ function invoke_confusion(invocation, state)
         new_ai.owner = invocation.owner 
         invocation.owner.ai = new_ai
     elseif not state then
-        console_print("The confusion has ended.")
+        console_print("The confusion has ended.", color_green)
         invocation.owner.ai = invocation.old_ai
         table.remove(invocation.owner.invocations, index_of(invocation))
     end
@@ -350,7 +356,7 @@ function ConfusedMonster:initialize()
 end
 
 function ConfusedMonster:take_turn()
-    console_print("The " .. self.owner.name .. " stumbles around!")
+    console_print("The " .. self.owner.name .. " stumbles around!", color_violet)
     self.owner:move(love.math.random(-1, 1), love.math.random(-1, 1))
 end
 
@@ -404,7 +410,7 @@ end
 
 function love.load()
     --options
-    love.window.setTitle("Roguelike")
+    love.window.setTitle("The Tomb of King LOVE")
     love.window.setMode(SCREEN_WIDTH*SCALE, SCREEN_HEIGHT*SCALE)
     love.keyboard.setKeyRepeat(true)
     G.setFont(G.newFont("PS2P-R.ttf", SCALE))
@@ -434,8 +440,9 @@ function love.update(dt)
     end
 
     if monster_count == 0 and game_state == "playing" then
-        game_state = "won"
+        console_print("The floor seems quiet. Too quiet...", color_green)
         draw_screen()
+        monster_count = monster_count - 1
     end 
 
     if player_action == "exit" then
@@ -464,13 +471,13 @@ function love.draw()
             inventory_menu(player.name .. "'s Inventory")
         elseif game_state == "aiming" then
             if direction == "up" then
-                text_draw(color_dark_yellow, "*", player.x, player.y - 1)
+                text_draw("*", player.x, player.y - 1, color_yellow, 0, 0)
             elseif direction == "down" then
-                text_draw(color_dark_yellow, "*", player.x, player.y + 1)
+                text_draw("*", player.x, player.y + 1, color_yellow, 0, 0)
             elseif direction == "left" then
-                text_draw(color_dark_yellow, "*", player.x - 1, player.y)
+                text_draw("*", player.x - 1, player.y, color_yellow, 0, 0)
             elseif direction == "right" then
-                text_draw(color_dark_yellow, "*", player.x + 1, player.y)
+                text_draw("*", player.x + 1, player.y, color_yellow, 0, 0)
             end
         elseif game_state == "dead" then
             game_over("Death is inevitable.")
@@ -507,6 +514,10 @@ function love.keypressed(key)
                 end
             end
             player_action = "pickup"
+        elseif key == "," then
+            if player.x == stairs.x and player.y == stairs.y then
+                next_level()
+            end
         else
             worldactive = false
             player_action = "didnt-take-turn"
@@ -581,14 +592,28 @@ function new_game()
     console_log = {}
     make_map()
 
-    local fighter_component = Fighter(30, 2, 5, player_death)
+    local fighter_component = Fighter(30, 1, 4, 0, player_death)
     player = GameObject(player_start_x, player_start_y, "@", "player", color_player, true, fighter_component, nil)
+    player.level = 1
     visible_range(PLAYER_VISIBLE_RANGE)
 
     --make map into a single image
     drawablemap = map_to_image(objectmap)
 
-    console_print("Welcome stranger, be prepared to perish in the tombs of LOVE!")
+    console_print("Welcome stranger, be prepared to perish in the tombs of LOVE!", color_red)
+    draw_screen()
+end
+
+function next_level()
+    console_print("You take a moment to rest...", color_blue)
+    player.fighter:heal(round(player.fighter.max_hp / 2))
+    console_print("You descent deeper into the tomb of king LOVE...", color_red)
+    make_map()
+    player.x = player_start_x
+    player.y = player_start_y
+    visible_range(PLAYER_VISIBLE_RANGE)
+    drawablemap = map_to_image(objectmap)
+    dungeon_level = dungeon_level + 1
     draw_screen()
 end
 
@@ -602,9 +627,9 @@ function round(number)
     end
 end
 
-function console_print(string)
+function console_print(string, color)
     print(string)
-    table.insert(console_log, string)
+    table.insert(console_log, {string, color})
 end
 
 function menu(header, options, width)
@@ -614,14 +639,11 @@ function menu(header, options, width)
     local x = 2
     local y = 2
     local height = table.maxn(options) + 2
-    rect_draw("fill", x, y, width, height, color_menu)
-    rect_draw("line", x, y, width, height, color_text)
-
-    G.draw(G.newText(G.getFont(), {color_text, header}), x * SCALE + 4, y * SCALE + 4)
-
-    for i=1, table.maxn(options) do
-        text = "(" .. ALPHABET[i] .. ") " .. options[i]
-        G.draw(G.newText(G.getFont(), {color_text, text}), x * SCALE + 4, (y + i) * SCALE + 4)
+    rect_draw("fill", x, y, width, height, color_grey_translucent)
+    rect_draw("line", x, y, width, height, color_grey)
+    text_draw(header, x, y, color_white, 4, 4)
+    for k, v in pairs(options) do
+        text_draw("(" .. ALPHABET[k] .. ") " .. v, x, y + k, color_white, 4, 4)
     end
 end
 
@@ -740,14 +762,26 @@ function console_draw()
         max = 5
     end
     for i=1, max do
-        G.draw(G.newText(G.getFont(), {color_text, console_log[count + 1 - i]}), SCALE, SCREEN_HEIGHT * SCALE - 1 - SCALE * i)
+        text_draw(console_log[count + 1 - i][1], 1, SCREEN_HEIGHT - i - 1, console_log[count + 1 - i][2] or nil, 0, 2)
     end
 end
 
 function stats_draw()
-    --HP
-    bar_draw(1, BAR_Y, BAR_WIDTH, "HP", player.fighter.hp, player.fighter.max_hp, color_red, color_grey)
+    --level
+    text_draw("LvL " .. player.level, 1, STAT_Y, color_white, 0, 4)
     
+    --HP
+    bar_draw(7, STAT_Y, BAR_WIDTH, "HP", player.fighter.hp, player.fighter.max_hp, color_red, color_grey)
+
+    --xp
+    text_draw(player.fighter.xp .. "/" .. (LEVEL_UP_BASE + player.level * LEVEL_UP_FACTOR) .. "EXP", 28, STAT_Y, color_white, 0, 4) 
+
+    --Attributes
+    text_draw("PWR:" .. player.fighter.power, 41, STAT_Y, color_white, 0, 4)
+    text_draw("DEF:" .. player.fighter.defense, 47, STAT_Y, color_white, 0, 4)
+    
+    --Dungeon level
+    text_draw("Floor " .. dungeon_level, SCREEN_WIDTH - 10, STAT_Y, color_white, 0, 4)
 end
 
 function bar_draw(x, y, total_width, name, value, maximum, bar_color, back_color)
@@ -761,27 +795,30 @@ function bar_draw(x, y, total_width, name, value, maximum, bar_color, back_color
     rect_draw("fill", x, y, bar_width, 1, bar_color)
 
     local string = name .. ": " .. value .. "/" .. maximum
-    G.draw(G.newText(G.getFont(), {color_text, string}), x * SCALE, y * SCALE + 4)
+    text_draw(string, x, y, color_white, 4, 4)
 end
 
 function rect_draw(mode, x, y, w, h, color)
     G.setColor(color)
     G.rectangle(mode, x * SCALE, y * SCALE, w * SCALE, h * SCALE)
-    G.setColor(color_background)
+    G.setColor(color_black)
 end
 
-function text_draw(color, text, x, y)
-    G.draw(G.newText(G.getFont(), {color, text}), x * SCALE, y * SCALE)
+function text_draw(text, x, y, color, xoff, yoff)
+    G.draw(G.newText(G.getFont(), {color or color_white, text}), x * SCALE + xoff, y * SCALE + yoff)
 end
 
 function game_over(text)
         rect_draw("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, {0,0,0,200})
-        console_print(text)
-        G.draw(G.newText(G.getFont(), {color_text, text}), ((round(SCREEN_WIDTH / 2)) - 10) * SCALE, (round(SCREEN_HEIGHT / 2)) * SCALE)
+        console_print(text, color_yellow)
+        G.draw(G.newText(G.getFont(), {color_white, text}), ((round(SCREEN_WIDTH / 2)) - 10) * SCALE, (round(SCREEN_HEIGHT / 2)) * SCALE)
 end
 
 --MAP
 function make_map()
+    game_objects = {}
+    objectmap = {}
+    
     for x=1, MAP_WIDTH, 1 do
         table.insert(objectmap, x, {}) 
         for y=1, MAP_HEIGHT, 1 do
@@ -793,13 +830,16 @@ function make_map()
 
     --random dungeon generation
     local rooms = {}
+    local x = 0
+    local y = 0
+    monster_count = monster_count + 1
     for rums=0, MAX_ROOMS do
         --random width and height
         local w = love.math.random(ROOM_MIN_SIZE, ROOM_MAX_SIZE)
         local h = love.math.random(ROOM_MIN_SIZE, ROOM_MAX_SIZE)
         --random position without going out of the boundaries of the map
-        local x = love.math.random(1, MAP_WIDTH - w - 1)
-        local y = love.math.random(1, MAP_HEIGHT - h - 1)
+        x = love.math.random(1, MAP_WIDTH - w - 1)
+        y = love.math.random(1, MAP_HEIGHT - h - 1)
 
         local new_room = Rect(x, y, w, h)
         local failed = false
@@ -832,6 +872,12 @@ function make_map()
             table.insert(rooms, new_room)
         end
     end
+    while objectmap[x][y].blocked do
+        x = x + love.math.random(-1, 1)
+        y = y + love.math.random(-1, 1)
+    end
+    stairs = GameObject(x, y, "<", "stairs", color_white)
+    table.insert(gameobjects, stairs)
 end
 
 function create_room(room)
@@ -866,13 +912,13 @@ function place_objects(room)
          if not is_blocked(x, y) then
             local monster = nil
             if love.math.random(0, 100) < 80 then  --80% chance of getting an orc
-                --create an orc
-                local fighter_component = Fighter(10, 0, 3, monster_death)
+                --create an orc 80%
+                local fighter_component = Fighter(10, 0, 3, 35, monster_death)
                 local ai_component = BasicMonster()
                 monster = GameObject(x, y, "o", "Orc", color_green, true, fighter_component, ai_component)
             else 
-                --create a troll
-                local fighter_component = Fighter(16, 1, 4, monster_death)
+                --create a troll 20%
+                local fighter_component = Fighter(16, 1, 4, 70, monster_death)
                 local ai_component = BasicMonster()
                 monster = GameObject(x, y, "T", "Troll", color_dark_green, true, fighter_component, ai_component)
             end
@@ -894,18 +940,22 @@ function place_objects(room)
             local item = nil
 
             dice = love.math.random(0, 100)
-            if dice < 40 then
+            if dice < 50 then
+                -- Healing potion 50%
                 local item_component = Item(cast_heal)
                 item = GameObject(x, y, '!', 'healing potion', color_violet, false, nil, nil, item_component)
-            elseif dice > 40 and dice < 50 then
+            elseif dice > 50 and dice < 60 then
+                --Confusion 10%
                 local item_component = Item(cast_confusion)
                 item = GameObject(x, y, '#', 'Scroll of Confusion', color_violet, false, nil, nil, item_component)   
-            elseif dice > 50 and dice < 75 then
+            elseif dice > 60 and dice < 85 then
+                --fireball 25%
                 local item_component = Item(cast_fireball)
                 item = GameObject(x, y, '#', 'Scroll of Fireball', color_dark_red, false, nil, nil, item_component)   
             else
+                --Lightning Bolt 15%
                 local item_component = Item(cast_lightning)
-                item = GameObject(x, y, '#', 'Scroll of Lighning Bolt', color_light_yellow, false, nil, nil, item_component)
+                item = GameObject(x, y, '#', 'Scroll of Lighning Bolt', color_yellow, false, nil, nil, item_component)
             end
             table.insert(gameobjects, item)
         end
@@ -928,9 +978,9 @@ function tile_to_colortext(tile)
     local wall = tile.blocked
     local colortext = {{255, 255, 255, 255}, "?"}
     if wall then
-        colortext = {color_dark_wall, "#"}
+        colortext = {color_dark_blue, "#"}
     else
-        colortext = {color_dark_ground, "."}
+        colortext = {color_blue, "."}
     end 
     return colortext
 end
@@ -1046,4 +1096,22 @@ function square_radius(x, y, z)
     local dy = math.abs(y)
     local dz = math.abs(z)
     return math.sqrt(dx*dx + dy*dy + dz*dz)
+end
+
+--PROGRESSION
+function check_level_up()
+    local needed = LEVEL_UP_BASE + player.level * LEVEL_UP_FACTOR
+    if player.fighter.xp >= needed then
+        player.level = player.level + 1
+        player.fighter.xp = player.fighter.xp - needed
+        console_print("Your battle skills grow stronger! You reached level " .. player.level .. "!", color_yellow)
+        local pwrbonus = math.random(1, player.level)
+        local defbonus = math.random(0, 1)
+        local hpbonus = math.random(player.level, player.level + 3)
+        player.fighter.power = player.fighter.power + pwrbonus
+        player.fighter.defense = player.fighter.defense + defbonus
+        player.fighter.max_hp = player.fighter.max_hp + hpbonus
+        player.fighter.hp = player.fighter.max_hp
+        console_print("You gain " .. pwrbonus .. " Power, " .. defbonus .. " Defense, and " .. hpbonus .. " Hitpoints!", color_yellow)
+    end
 end

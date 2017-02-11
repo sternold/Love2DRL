@@ -1,5 +1,10 @@
 # CHANGELOG
 
+# V 0.6
+* Random player progression added
+* Dungeon progression added
+* Win condition removed
+
 # V 0.5
 * Added Field-of-View
 
