@@ -541,16 +541,16 @@ end
 function love.keypressed(key)
     if game_state == "playing" then
         worldactive = true
-        if key == "left" then
+        if key == "left" or key == "kp4" then
             player_move_or_attack(-1, 0)
             player_action = "left"
-        elseif key == "right" then
+        elseif key == "right" or key == "kp6" then
             player_move_or_attack(1, 0)
             player_action = "right"
-        elseif key == "up" then
+        elseif key == "up" or key == "kp8" then
             player_move_or_attack(0, -1)
             player_action = "up"
-        elseif key == "down" then
+        elseif key == "down" or key == "kp2" then
             player_move_or_attack(0, 1)
             player_action = "down"
         elseif key == "g" then
@@ -598,7 +598,15 @@ function love.keypressed(key)
         if key == "c" then
             game_state = "casting"
         else
-            direction = key
+            if key == "left" or key == "kp4" then
+                direction = "left"
+            elseif key == "right" or key == "kp6" then
+                direction = "right"
+            elseif key == "up" or key == "kp8" then
+                direction = "up"
+            elseif key == "down" or key == "kp2" then
+                direction = "down"
+            end
         end
         draw_screen()
     elseif game_state == "dead" then

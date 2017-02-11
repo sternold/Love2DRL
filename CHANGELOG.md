@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# v 0.8.1
+* added numpad support
+
 # v 0.8
 * Saving/Loading system
 
