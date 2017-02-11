@@ -4,6 +4,7 @@ local G = love.graphics
 
 --constants
 ALPHABET = {"a", "b", "c", "d", "e", "f","g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"}
+DIRECTION = {{0, -1}, {0,1}, {-1,0}, {1,0},{-1,-1},{1,-1},{-1,1},{1,1}}
 SCALE = 16
 SCREEN_WIDTH = 80
 SCREEN_HEIGHT = 50
@@ -17,8 +18,9 @@ BAR_WIDTH = 20
 BAR_Y = 0
 MAX_ROOM_ITEMS = 2
 INVENTORY_WIDTH = 60
+PLAYER_VISIBLE_RANGE = 10
 HEAL_AMOUNT = 4
-LIGHTNING_RANGE = 5
+SPELL_RANGE = 5
 LIGHTNING_DAMAGE = 20
 CONFUSION_DURATION = 10
 FIREBALL_DAMAGE = 30
@@ -39,6 +41,11 @@ color_menu = {200, 200, 200, 200}
 color_light_yellow = {200, 200, 0, 255}
 color_dark_yellow = {125, 125, 0, 245}
 
+--fog of war
+fog_dark = {0, 0, 0, 255}
+fog_visited = {0, 0, 0, 50}
+fog_visible = {0, 0, 0, 0}
+
 --variables
 gameobjects = {}
 player_start_x = 0
@@ -56,8 +63,10 @@ inventory = {}
 
 --TILE
 Tile = class("Tile")
-function Tile:initialize (blocked)
+function Tile:initialize (blocked, block_sight)
     self.blocked = blocked
+    self.block_sight = block_sight or blocked
+    self.visibility = fog_dark
 end
 
 --RECT
@@ -112,7 +121,9 @@ function GameObject:move(dx, dy)
 end
 
 function GameObject:draw()
-    G.draw(self.colortext, self.x*SCALE, self.y*SCALE)
+    if objectmap[self.x][self.y].visibility == fog_visible then
+        G.draw(self.colortext, self.x*SCALE, self.y*SCALE)
+    end
 end
 
 function GameObject:move_towards(target_x, target_y)
@@ -174,7 +185,6 @@ end
 
 function player_death(target)
     game_state = "dead"
-    console_print("Death is inevitable.")
 
     target.char = '%'
     target.color = color_dark_red
@@ -253,7 +263,7 @@ function cast_heal()
 end
 
 function cast_lightning()
-    local monster = closest_monster(LIGHTNING_RANGE)
+    local monster = closest_monster(SPELL_RANGE)
     if monster == nil then
         console_print("No enemy in range.")
         return "cancelled"
@@ -272,7 +282,7 @@ function cast_fireball()
         if target == "wrong_direction" then
             console_print("Wrong key.")
         elseif target ~= nil then
-            console_print("The " .. target.name .. "takes 30 fire damage!")
+            console_print("The " .. target.name .. " takes 30 fire damage!")
             target.fighter:take_damage(FIREBALL_DAMAGE)
             game_state = "playing"
             direction = "none"
@@ -289,7 +299,7 @@ function cast_fireball()
 end
 
 function cast_confusion()
-    local monster = closest_monster(LIGHTNING_RANGE)
+    local monster = closest_monster(SPELL_RANGE)
     if monster == nil then
         console_print("No enemy in range.")
         return "cancelled"
@@ -424,9 +434,8 @@ function love.update(dt)
     end
 
     if monster_count == 0 and game_state == "playing" then
-        rect_draw("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, {0,0,0,200})
-        console_print("A WINNER IS YOU!")
-        G.draw(G.newText(G.getFont(), {color_text, "A WINNER IS YOU!"}), ((round(SCREEN_WIDTH / 2)) - 10) * SCALE, (round(SCREEN_HEIGHT / 2)) * SCALE)
+        game_state = "won"
+        draw_screen()
     end 
 
     if player_action == "exit" then
@@ -437,7 +446,7 @@ end
 function love.draw()
     if player_action ~= "main" then
         --draw map
-        G.draw(drawablemap, 1, 1)
+        G.draw(drawablemap, 1, 3)
 
         --draw player
         for key,value in pairs(gameobjects) do 
@@ -446,6 +455,7 @@ function love.draw()
             end
         end
         player:draw()
+        fog_of_war()
 
         console_draw()
         stats_draw()
@@ -462,6 +472,10 @@ function love.draw()
             elseif direction == "right" then
                 text_draw(color_dark_yellow, "*", player.x + 1, player.y)
             end
+        elseif game_state == "dead" then
+            game_over("Death is inevitable.")
+        elseif game_state == "won" then
+            game_over("A WINNER IS YOU!")
         end
     else
         if game_state == "menu" then
@@ -532,13 +546,13 @@ function love.keypressed(key)
     end
     if key == "escape" then
         player_action = "exit"
-    elseif key == "i" then
+    elseif key == "i" and player_action ~= "drop" then
         if game_state == "playing" then
             game_state = "menu"
             player_action = "inventory"
         end
         draw_screen()
-    elseif key == "d" then
+    elseif key == "d" and player_action ~= "inventory" then
         if game_state == "playing" then
             game_state = "menu"
             player_action = "drop"
@@ -569,6 +583,7 @@ function new_game()
 
     local fighter_component = Fighter(30, 2, 5, player_death)
     player = GameObject(player_start_x, player_start_y, "@", "player", color_player, true, fighter_component, nil)
+    visible_range(PLAYER_VISIBLE_RANGE)
 
     --make map into a single image
     drawablemap = map_to_image(objectmap)
@@ -577,7 +592,7 @@ function new_game()
     draw_screen()
 end
 
---MISC
+--UTIL
 function round(number)
     local toround = number - math.floor(number)
     if toround >= .5 then
@@ -648,7 +663,13 @@ function closest_monster(max_range)
             end
         end
     end
-    return closest_enemy
+    if closest_enemy ==nil then
+        return closest_enemy
+    elseif objectmap[closest_enemy.x][closest_enemy.y].visibility == fog_visible then
+        return closest_enemy
+    else
+        return nil
+    end
 end
 
 function find_target(direction)
@@ -702,6 +723,14 @@ function find_target(direction)
 end
 
 --DRAWING
+function fog_of_war()
+    for x,arr in pairs(objectmap) do
+        for y, til in pairs(arr) do
+            rect_draw("fill", x, y, 1, 1, til.visibility)
+        end
+    end
+end
+
 function console_draw()
     local count = table.maxn(console_log)
     local max = 1
@@ -743,6 +772,12 @@ end
 
 function text_draw(color, text, x, y)
     G.draw(G.newText(G.getFont(), {color, text}), x * SCALE, y * SCALE)
+end
+
+function game_over(text)
+        rect_draw("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, {0,0,0,200})
+        console_print(text)
+        G.draw(G.newText(G.getFont(), {color_text, text}), ((round(SCREEN_WIDTH / 2)) - 10) * SCALE, (round(SCREEN_HEIGHT / 2)) * SCALE)
 end
 
 --MAP
@@ -803,6 +838,7 @@ function create_room(room)
     for x=room.x1+1, room.x2 do
         for y=room.y1+1, room.y2 do
             objectmap[x][y].blocked = false
+            objectmap[x][y].block_sight = false
         end
     end
 end
@@ -929,5 +965,85 @@ function player_move_or_attack(dx, dy)
         player.fighter:attack(target)
     else
         player:move(dx, dy)
+        visible_range(PLAYER_VISIBLE_RANGE)
     end
+end
+
+function visible_range(range)
+    objectmap[player.x][player.y].visibility = fog_visible
+
+    for x, arr in pairs(objectmap) do
+        for y, til in pairs(arr) do
+            if til.visibility == fog_visible then
+                til.visibility = fog_visited
+            end
+        end
+    end
+
+    for k,v in pairs(DIRECTION) do
+        fov_cast_light(1, 1, 0, 0, v[1], v[2], 0, range)
+        fov_cast_light(1, 1, 0, v[1], 0, 0, v[2], range)
+    end
+end
+
+function fov_cast_light(row, cstart, cend, xx, xy, yx, yy, range)
+    local startx = player.x
+    local starty = player.y
+    local radius = range
+    local start = cstart
+    
+    local new_start = 0
+    if start < cend then
+        return
+    end
+
+    local width = table.maxn(objectmap)
+    local height = table.maxn(objectmap[1])
+
+    local blocked = false
+    for distance = row, radius do
+        local deltay = distance * -1
+        for deltax = distance * -1, 0 do
+            local currentx = startx + deltax * xx + deltay * xy
+            local currenty = starty + deltax * yx + deltay * yy
+            local leftslope = (deltax - .5) / (deltay +.5)
+            local rightslope = (deltax + .5) / (deltay - .5)
+
+            if not (currentx >= 0 and currenty >= 0 and currentx < width and currenty < height) or start < rightslope then
+                --Continue
+            elseif cend > leftslope then
+                break;
+            else
+                if square_radius(deltax, deltay, 0) <= radius then
+                    objectmap[currentx][currenty].visibility = fog_visible
+                end
+
+                if blocked then
+                    if objectmap[currentx][currenty].block_sight then
+                        new_start = rightslope
+                        --Continue
+                    else 
+                        blocked = false
+                        start = new_start
+                    end
+                else
+                    if objectmap[currentx][currenty].block_sight and distance < radius then
+                        blocked = true
+                        fov_cast_light(distance + 1, start, leftslope, xx, xy, yx, yy, range)
+                        new_start = rightslope
+                    end
+                end
+            end
+        end
+        if blocked then
+            break
+        end
+    end
+end
+
+function square_radius(x, y, z)
+    local dx = math.abs(x)
+    local dy = math.abs(y)
+    local dz = math.abs(z)
+    return math.sqrt(dx*dx + dy*dy + dz*dz)
 end
