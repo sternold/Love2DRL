@@ -873,8 +873,14 @@ function make_map()
         end
     end
     while objectmap[x][y].blocked do
-        x = x + love.math.random(-1, 1)
-        y = y + love.math.random(-1, 1)
+        dx = love.math.random(-1, 1)
+        dy = love.math.random(-1, 1)
+        if objectmap[x + dx][y + dy] == nil then
+            x = love.math.random(2, MAP_WIDTH - 1)
+            y = love.math.random(2, MAP_HEIGHT - 1)
+        end
+        x = x + dx
+        y = y + dy
     end
     stairs = GameObject(x, y, "<", "stairs", color_white)
     table.insert(gameobjects, stairs)

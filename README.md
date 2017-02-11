@@ -9,6 +9,7 @@ This is a roguelike created following [this tutorial.](http://www.roguebasin.com
 * Press D to drop an item.
 * Press the corresponding letter to select an option inside a menu.
 * While casting aimable spells, press the arrow keys to aim, and C to cast.
+* Press Comma (,) to move down stairs.
 * Press ESC to exit.
 
 ## To Do
