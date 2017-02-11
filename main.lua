@@ -45,7 +45,7 @@ player_start_x = 0
 player_start_y = 0
 worldactive = false
 objectmap = {}
-game_state = "playing"
+game_state = ""
 player_action = ""
 menu_active = false
 monster_count = 0
@@ -400,17 +400,9 @@ function love.load()
     G.setFont(G.newFont("PS2P-R.ttf", SCALE))
 
     --initialize
-    console_log = {}
-    make_map()
-    
-    local fighter_component = Fighter(30, 2, 5, player_death)
-    player = GameObject(player_start_x, player_start_y, "@", "player", color_player, true, fighter_component, nil)
-    table.insert(gameobjects, player)
-
-    --make map into a single image
-    drawablemap = map_to_image(objectmap)
-
-    console_print("Welcome stranger, be prepared to perish in the tombs of LOVE!")
+    game_state = "menu"
+    player_action = "main"
+    draw_screen()
 end
 
 function love.update(dt)
@@ -431,7 +423,7 @@ function love.update(dt)
         end
     end
 
-    if monster_count == 0 then
+    if monster_count == 0 and game_state == "playing" then
         rect_draw("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, {0,0,0,200})
         console_print("A WINNER IS YOU!")
         G.draw(G.newText(G.getFont(), {color_text, "A WINNER IS YOU!"}), ((round(SCREEN_WIDTH / 2)) - 10) * SCALE, (round(SCREEN_HEIGHT / 2)) * SCALE)
@@ -443,33 +435,39 @@ function love.update(dt)
 end
 
 function love.draw()
-    --draw map
-    G.draw(drawablemap, 1, 1)
+    if player_action ~= "main" then
+        --draw map
+        G.draw(drawablemap, 1, 1)
 
-    --draw player
-    for key,value in pairs(gameobjects) do 
-        if value ~= player then
-            value:draw()
+        --draw player
+        for key,value in pairs(gameobjects) do 
+            if value ~= player then
+                value:draw()
+            end
         end
-    end
-    player:draw()
+        player:draw()
 
-    console_draw()
-    stats_draw()
+        console_draw()
+        stats_draw()
 
-    if game_state == "menu" then
-        inventory_menu(player.name .. "'s Inventory")
-    elseif game_state == "aiming" then
-        if direction == "up" then
-            text_draw(color_dark_yellow, "*", player.x, player.y - 1)
-        elseif direction == "down" then
-            text_draw(color_dark_yellow, "*", player.x, player.y + 1)
-        elseif direction == "left" then
-            text_draw(color_dark_yellow, "*", player.x - 1, player.y)
-        elseif direction == "right" then
-            text_draw(color_dark_yellow, "*", player.x + 1, player.y)
+        if game_state == "menu" then
+            inventory_menu(player.name .. "'s Inventory")
+        elseif game_state == "aiming" then
+            if direction == "up" then
+                text_draw(color_dark_yellow, "*", player.x, player.y - 1)
+            elseif direction == "down" then
+                text_draw(color_dark_yellow, "*", player.x, player.y + 1)
+            elseif direction == "left" then
+                text_draw(color_dark_yellow, "*", player.x - 1, player.y)
+            elseif direction == "right" then
+                text_draw(color_dark_yellow, "*", player.x + 1, player.y)
+            end
         end
-    end
+    else
+        if game_state == "menu" then
+            main_menu()
+        end
+    end 
 end
 
 function love.keypressed(key)
@@ -511,6 +509,13 @@ function love.keypressed(key)
                 draw_screen()
             end
             player_action = "didnt-take-turn"
+        elseif player_action == "main" then
+            choice = index_of(ALPHABET, key)
+            if choice == 1 then
+                new_game()
+            elseif choice == 3 then
+                player_action = "exit"
+            end
         else 
             game_state = "playing"
             draw_screen()
@@ -551,6 +556,24 @@ function draw_screen()
 end
 
 ---FUNCTIONS
+
+--INIT 
+function new_game()
+    game_state = "playing"  
+    player_action = nil  
+    inventory = {}
+    console_log = {}
+    make_map()
+
+    local fighter_component = Fighter(30, 2, 5, player_death)
+    player = GameObject(player_start_x, player_start_y, "@", "player", color_player, true, fighter_component, nil)
+
+    --make map into a single image
+    drawablemap = map_to_image(objectmap)
+
+    console_print("Welcome stranger, be prepared to perish in the tombs of LOVE!")
+    draw_screen()
+end
 
 --MISC
 function round(number)
@@ -595,6 +618,10 @@ function inventory_menu(header)
         end
     end
     menu(header, options, INVENTORY_WIDTH)
+end
+
+function main_menu()
+    menu("", {"New Game", "Continue", "Quit"}, 24)
 end
 
 function index_of(table, object)
@@ -724,6 +751,8 @@ function make_map()
             table.insert(objectmap[x], y, Tile(true)) 
         end
     end
+
+    table.insert(gameobjects, player)
 
     --random dungeon generation
     local rooms = {}
