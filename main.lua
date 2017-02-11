@@ -1,10 +1,12 @@
 --modules
+require("lib//Serialization//tablepersistence")
 local class = require "lib//middleclass"
 local G = love.graphics
 
 --constants
 ALPHABET = {"a", "b", "c", "d", "e", "f","g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"}
 DIRECTION = {{0, -1}, {0,1}, {-1,0}, {1,0},{-1,-1},{1,-1},{-1,1},{1,1},{0,0}}
+SAVE_FILE = "save.rl"
 SCALE = 16
 SCREEN_WIDTH = 80
 SCREEN_HEIGHT = 50
@@ -46,7 +48,7 @@ color_grey_translucent = {200, 200, 200, 200}
 
 --fog of war
 fog_dark = {0, 0, 0, 255}
-fog_visited = {0, 0, 0, 50}
+fog_visited = {0, 0, 0, 150}
 fog_visible = {0, 0, 0, 0}
 
 --variables
@@ -490,6 +492,7 @@ function love.update(dt)
     end 
 
     if player_action == "exit" then
+        save_game()
         love.event.quit()
     end
 end
@@ -583,7 +586,7 @@ function love.keypressed(key)
             if choice == 1 then
                 new_game()
             elseif choice == 2 then
-                --TODO: Saving and loading
+                load_game()
             elseif choice == 3 then
                 player_action = "exit"
             end
@@ -663,6 +666,101 @@ function next_level()
     drawablemap = map_to_image(objectmap)
     dungeon_level = dungeon_level + 1
     draw_screen()
+end
+
+function save_game()
+    if love.filesystem.isFile(SAVE_FILE) then
+        love.filesystem.remove(SAVE_FILE)
+    end
+    love.filesystem.newFile(SAVE_FILE)
+    local savedata = {}
+    table.insert(savedata, 1, objectmap)
+    table.insert(savedata, 3, gameobjects)
+    table.insert(savedata, 4, player)
+    table.insert(savedata, 5, inventory)
+    table.insert(savedata, 6, console_log)
+    table.insert(savedata, 7, game_state)
+    local buf = persistence.store(love.filesystem.getSaveDirectory() .. "//" .. SAVE_FILE, savedata)
+    --todo
+end
+
+function load_game()
+    if love.filesystem.isFile(SAVE_FILE) then
+        local savedata = persistence.load(love.filesystem.getSaveDirectory() .. "//" .. SAVE_FILE)
+        --load map
+        objectmap = {}
+        local lobjectmap = savedata[1]
+        for x, arr in pairs(lobjectmap) do
+            objectmap[x] = {}
+            for y, til in pairs(arr) do
+                objectmap[x][y] = Tile(til.blocked, til.block_sight)
+                objectmap[x][y].visibility = til.visibility
+            end 
+        end
+        
+        --load objects [dont forget invocations]
+        gameobjects = {}
+        local lgameobjects = savedata[3]
+        for k,v in pairs(lgameobjects) do
+            local lfighter = nil
+            local lai = nil
+            local litem = nil
+            if v.fighter ~= nil then
+                lfighter = Fighter(v.fighter.max_hp, v.fighter.defense, v.fighter.power, v.fighter.xp, monster_death)
+                lfighter.hp = v.fighter.hp
+            end
+            if v.ai ~= nil then
+                lai = BasicMonster()
+            end
+            if v.item ~= nil then
+                litem = Item(v.item.use_function)
+            end
+            local lgameobject = GameObject(v.x, v.y, v.char, v.name, v.color, v.blocks, lfighter, lai, litem)
+            for k1, inv in pairs(v.invocations) do
+                local linv = Invocation(inv.duration, inv.invoke_function)
+                linv.timer = inv.timer
+                table.insert(lgameobject.invocations, linv)
+            end
+            table.insert(gameobjects, lgameobject)
+        end
+        
+        --load player
+        local lplayer = savedata[4]
+        local lfighter = lplayer.fighter
+        local fighter = Fighter(lfighter.max_hp, lfighter.defense, lfighter.power, lfighter.xp, player_death)
+        fighter.hp = lfighter.hp
+        player = GameObject(lplayer.x, lplayer.y, lplayer.char, "player", color_player, true, fighter, nil, nil)
+        player.level = lplayer.level
+        
+        --load inventory
+        inventory = {}
+        local linventory = savedata[5]
+        for k,v in pairs(linventory) do
+            local litem_component = Item(v.item.use_function)
+            local litem = GameObject(v.x, v.y, v.char, v.name, v.color, false, nil, nil, litem_component)
+            table.insert(inventory, litem)
+        end
+        
+        --load console_log
+        console_log = savedata[6]
+        
+        --load game_state
+        game_state = savedata[7]
+
+        --load stairs
+        for k, v in pairs(gameobjects) do
+            if v.name == "stairs" then
+                stairs = v
+            end
+        end 
+        
+        drawablemap = map_to_image(objectmap)
+        player_action = nil  
+        visible_range(PLAYER_VISIBLE_RANGE)
+        draw_screen()
+    else
+        print("No save data found.")    
+    end
 end
 
 --UTIL
@@ -911,8 +1009,6 @@ function make_map()
         end
     end
 
-    table.insert(gameobjects, player)
-
     --random dungeon generation
     local rooms = {}
     local x = 0
@@ -1123,6 +1219,7 @@ function player_move_or_attack(dx, dy)
     end
 
     if target ~= nil then
+            print(target.fighter.hp .. "/" .. target.fighter.max_hp)
         player.fighter:attack(target)
     else
         player:move(dx, dy)

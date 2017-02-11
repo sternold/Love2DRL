@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# v 0.8
+* Saving/Loading system
+
 # v 0.7
 * Bugfixes
 * Added spells (Giant's Strength, Lightning Storm)
