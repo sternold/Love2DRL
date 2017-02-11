@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# v 0.8.2
+* saving hotfix
+
 # v 0.8.1
 * added numpad support
 

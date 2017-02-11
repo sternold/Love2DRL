@@ -20,6 +20,7 @@ This is a roguelike created following [this tutorial.](http://www.roguebasin.com
 * [middleclass](https://github.com/kikito/middleclass) by Kikito
 * [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P) by CodeMan38
 * [Improved Shadowcasting](http://www.roguebasin.com/index.php?title=Improved_Shadowcasting_in_Java) by Eben Howard
+* [TablePersistence](http://lua-users.org/wiki/TablePersistence)
 
 ## Developed By
 

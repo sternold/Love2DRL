@@ -666,7 +666,7 @@ end
 function next_level()
     console_print("You take a moment to rest...", color_blue)
     player.fighter:heal(round(player.fighter.max_hp / 2))
-    console_print("You descent deeper into the tomb of king LOVE...", color_red)
+    console_print("You descend deeper into the tomb of king LOVE...", color_red)
     make_map()
     player.x = player_start_x
     player.y = player_start_y
@@ -688,13 +688,13 @@ function save_game()
     table.insert(savedata, 5, inventory)
     table.insert(savedata, 6, console_log)
     table.insert(savedata, 7, game_state)
-    local buf = persistence.store(love.filesystem.getSaveDirectory() .. "//" .. SAVE_FILE, savedata)
+    local buf = persistence.store(love.filesystem.getSaveDirectory() .. "/" .. SAVE_FILE, savedata)
     --todo
 end
 
 function load_game()
     if love.filesystem.isFile(SAVE_FILE) then
-        local savedata = persistence.load(love.filesystem.getSaveDirectory() .. "//" .. SAVE_FILE)
+        local savedata = persistence.load(love.filesystem.getSaveDirectory() .. "/" .. SAVE_FILE)
         --load map
         objectmap = {}
         local lobjectmap = savedata[1]
