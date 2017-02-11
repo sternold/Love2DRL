@@ -13,17 +13,18 @@ MAP_HEIGHT = 43
 ROOM_MAX_SIZE = 10
 ROOM_MIN_SIZE = 6
 MAX_ROOMS = 30
-MAX_ROOM_MONSTERS = 3
 BAR_WIDTH = 20
 STAT_Y = 0
-MAX_ROOM_ITEMS = 2
 INVENTORY_WIDTH = 60
-PLAYER_VISIBLE_RANGE = 20
-HEAL_AMOUNT = 5
+PLAYER_VISIBLE_RANGE = 10
+HEAL_AMOUNT = 20
 SPELL_RANGE = 6
-LIGHTNING_DAMAGE = 20
-CONFUSION_DURATION = 10
-FIREBALL_DAMAGE = 10
+LIGHTNING_DAMAGE = 50
+LIGHTNING_STORM_RANGE = 5
+CONFUSION_DURATION = 30
+FIREBALL_DAMAGE = 25
+STRENGTH_BONUS = 5
+STRENGTH_DURATION = 4
 LEVEL_UP_BASE = 200
 LEVEL_UP_FACTOR = 150
 
@@ -217,11 +218,13 @@ end
 
 function BasicMonster:take_turn()
     monster = self.owner
- 
-    if monster:distance_to(player) >= 2 then
-        monster:move_towards(player.x, player.y)
-    elseif player.fighter.hp > 0 then
-        monster.fighter:attack(player)
+    
+    if objectmap[self.owner.x][self.owner.y].visibility == fog_visible then
+        if monster:distance_to(player) >= 2 then
+            monster:move_towards(player.x, player.y)
+        elseif player.fighter.hp > 0 then
+            monster.fighter:attack(player)
+        end
     end
 end
 
@@ -315,6 +318,31 @@ function cast_confusion()
     add_invocation(monster, CONFUSION_DURATION, invoke_confusion)
 end
 
+function cast_strength()
+    console_print("The " .. player.name .. " grows stronger!", color_player)
+    add_invocation(player, STRENGTH_DURATION, invoke_strength)
+end
+
+function cast_lightning_storm()
+    local gobjects = gameobjects_in_range(player.x, player.y, LIGHTNING_STORM_RANGE)
+    if table.maxn(gobjects) == 0 then
+        console_print(table.maxn(gobjects))
+        console_print("No enemy in range.")
+        return "cancelled"
+    end
+    local monsters = {}
+    for k, v in pairs(gobjects)do
+        if v.ai ~= nil then
+            table.insert(monsters, v)
+        end
+    end
+
+    console_print("A lightning storm strikes " .. table.maxn(monsters) .. " targets, dealing " .. LIGHTNING_DAMAGE .. " damage to each!", color_yellow)
+    for k, v in pairs(monsters) do
+        v.fighter:take_damage(LIGHTNING_DAMAGE)
+    end
+end
+
 --INVOCATION
 Invocation = class('Invocation')
 function Invocation:initialize(duration, invoke_function)
@@ -340,6 +368,19 @@ function invoke_confusion(invocation, state)
     elseif not state then
         console_print("The confusion has ended.", color_green)
         invocation.owner.ai = invocation.old_ai
+        table.remove(invocation.owner.invocations, index_of(invocation))
+    end
+end
+
+function invoke_strength(invocation, state)
+    if not invocation.fired and state then
+        invocation.old_pwr = invocation.owner.fighter.power
+        new_pwr = invocation.owner.fighter.power + STRENGTH_BONUS
+        invocation.owner.fighter.power = new_pwr
+        invocation.fired = true
+    elseif not state then
+        console_print(invocation.owner.name .. " no longer feels powerful.", color_player)
+        invocation.owner.fighter.power = invocation.old_pwr
         table.remove(invocation.owner.invocations, index_of(invocation))
     end
 end
@@ -430,6 +471,9 @@ function love.update(dt)
                 end
                 value.ai:take_turn()
             end 
+        end
+        for k, v in pairs(player.invocations) do
+            v:invoke()
         end
         draw_screen()
         worldactive = false
@@ -554,6 +598,10 @@ function love.keypressed(key)
             direction = key
         end
         draw_screen()
+    elseif game_state == "dead" then
+        if key == "r" then
+            new_game()
+        end
     end
     if key == "escape" then
         player_action = "exit"
@@ -592,7 +640,7 @@ function new_game()
     console_log = {}
     make_map()
 
-    local fighter_component = Fighter(30, 1, 4, 0, player_death)
+    local fighter_component = Fighter(100, 1, 4, 0, player_death)
     player = GameObject(player_start_x, player_start_y, "@", "player", color_player, true, fighter_component, nil)
     player.level = 1
     visible_range(PLAYER_VISIBLE_RANGE)
@@ -672,6 +720,15 @@ function index_of(table, object)
     return nil
 end
 
+function find_gameobject(x, y)
+    for k, v in pairs(gameobjects) do
+        if v.x == x and v.y == y then
+            return v
+        end
+    end
+    return nil
+end
+
 function closest_monster(max_range)
     local closest_enemy = nil
     local closest_dist = max_range + 1
@@ -741,6 +798,34 @@ function find_target(direction)
         end
     else
         return 'wrong_direction'
+    end
+end
+
+function gameobjects_in_range(originx, originy, range)
+    local targets = {}
+    for x = originx - range, originx + range do
+        for y = originy - range, originy + range do
+            gob = find_gameobject(x, y)
+            if gob ~= nil then
+                table.insert(targets, gob)
+            end
+        end
+    end 
+    return targets
+end
+
+function random_choice(collection)
+    local sum = 0
+    for k,v in pairs(collection) do
+        sum = sum + v
+    end
+    local dice = love.math.random(0, sum)
+    sum = 0
+    for k,v in pairs(collection) do
+        sum = sum + v
+        if dice <= sum then
+            return k
+        end
     end
 end
 
@@ -816,7 +901,7 @@ end
 
 --MAP
 function make_map()
-    game_objects = {}
+    gameobjects = {}
     objectmap = {}
     
     for x=1, MAP_WIDTH, 1 do
@@ -875,7 +960,7 @@ function make_map()
     while objectmap[x][y].blocked do
         dx = love.math.random(-1, 1)
         dy = love.math.random(-1, 1)
-        if objectmap[x + dx][y + dy] == nil then
+        if objectmap[x + dx] == nil or objectmap[x + dx][y + dy] == nil then
             x = love.math.random(2, MAP_WIDTH - 1)
             y = love.math.random(2, MAP_HEIGHT - 1)
         end
@@ -898,17 +983,37 @@ end
 function create_h_tunnel(x1, x2, y)
     for x=math.min(x1, x2), math.max(x1, x2) do
         objectmap[x][y].blocked = false
+        objectmap[x][y].block_sight = false
     end
 end
 
 function create_v_tunnel(y1, y2, x)
     for y=math.min(y1, y2), math.max(y1, y2) do
         objectmap[x][y].blocked = false
+        objectmap[x][y].block_sight = false
     end
 end
 
 function place_objects(room)
-    local num_monsters = love.math.random(0, MAX_ROOM_MONSTERS)
+    --MONSTERS
+    local max_monsters = from_dungeon_level({{1, 2}, {4, 3}, {6, 5}})
+ 
+    local monster_chances = {}
+    monster_chances['orc'] = 80  
+    monster_chances['troll'] = from_dungeon_level({{3, 15}, {5, 30}, {7, 60}})
+ 
+    --ITEMS
+    local max_items = from_dungeon_level({{1, 1}, {4, 2}})
+ 
+    local item_chances = {}
+    item_chances['heal'] = 35 
+    item_chances['lightning'] = from_dungeon_level({{3, 10}})
+    item_chances['fireball'] =  from_dungeon_level({{2, 20}})
+    item_chances['confuse'] =   from_dungeon_level({{2, 10}})
+    item_chances['strength'] =   from_dungeon_level({{3, 20}})
+    item_chances['lightning_storm'] =   from_dungeon_level({{5, 5}})
+
+    local num_monsters = love.math.random(0, max_monsters)
 
     for i=0, num_monsters do
         --choose random spot for this monster
@@ -917,14 +1022,13 @@ function place_objects(room)
         
          if not is_blocked(x, y) then
             local monster = nil
-            if love.math.random(0, 100) < 80 then  --80% chance of getting an orc
-                --create an orc 80%
-                local fighter_component = Fighter(10, 0, 3, 35, monster_death)
+            local choice = random_choice(monster_chances) 
+            if choice == "orc" then
+                local fighter_component = Fighter(20, 0, 4, 35, monster_death)
                 local ai_component = BasicMonster()
                 monster = GameObject(x, y, "o", "Orc", color_green, true, fighter_component, ai_component)
-            else 
-                --create a troll 20%
-                local fighter_component = Fighter(16, 1, 4, 70, monster_death)
+            elseif choice == "troll" then
+                local fighter_component = Fighter(30, 2, 8, 50, monster_death)
                 local ai_component = BasicMonster()
                 monster = GameObject(x, y, "T", "Troll", color_dark_green, true, fighter_component, ai_component)
             end
@@ -934,7 +1038,7 @@ function place_objects(room)
     end
 
     --choose random number of items
-    local num_items = love.math.random(0, MAX_ROOM_ITEMS)
+    local num_items = love.math.random(0, max_items)
  
     for i=0, num_items do
         --choose random spot for this item
@@ -944,24 +1048,25 @@ function place_objects(room)
         --only place it if the tile is not blocked
         if not is_blocked(x, y) then
             local item = nil
-
-            dice = love.math.random(0, 100)
-            if dice < 50 then
-                -- Healing potion 50%
+            local choice = random_choice(item_chances) 
+            if choice == "heal" then
                 local item_component = Item(cast_heal)
                 item = GameObject(x, y, '!', 'healing potion', color_violet, false, nil, nil, item_component)
-            elseif dice > 50 and dice < 60 then
-                --Confusion 10%
+            elseif choice == "confuse" then
                 local item_component = Item(cast_confusion)
                 item = GameObject(x, y, '#', 'Scroll of Confusion', color_violet, false, nil, nil, item_component)   
-            elseif dice > 60 and dice < 85 then
-                --fireball 25%
+            elseif choice == "fireball" then
                 local item_component = Item(cast_fireball)
                 item = GameObject(x, y, '#', 'Scroll of Fireball', color_dark_red, false, nil, nil, item_component)   
-            else
-                --Lightning Bolt 15%
+            elseif choice == "strength" then
+                local item_component = Item(cast_strength)
+                item = GameObject(x, y, '#', "Scroll of Giant's Strength", color_player, false, nil, nil, item_component)   
+            elseif choice == "lightning" then
                 local item_component = Item(cast_lightning)
                 item = GameObject(x, y, '#', 'Scroll of Lighning Bolt', color_yellow, false, nil, nil, item_component)
+            elseif choice == "lightning_storm" then
+                local item_component = Item(cast_lightning_storm)
+                item = GameObject(x, y, '#', 'Scroll of Lightning Storm', color_dark_yellow, false, nil, nil, item_component)
             end
             table.insert(gameobjects, item)
         end
@@ -1111,13 +1216,22 @@ function check_level_up()
         player.level = player.level + 1
         player.fighter.xp = player.fighter.xp - needed
         console_print("Your battle skills grow stronger! You reached level " .. player.level .. "!", color_yellow)
-        local pwrbonus = math.random(1, player.level)
+        local pwrbonus = math.random(0, 1)
         local defbonus = math.random(0, 1)
-        local hpbonus = math.random(player.level, player.level + 3)
+        local hpbonus = math.random(1, 2)
         player.fighter.power = player.fighter.power + pwrbonus
         player.fighter.defense = player.fighter.defense + defbonus
         player.fighter.max_hp = player.fighter.max_hp + hpbonus
         player.fighter.hp = player.fighter.max_hp
         console_print("You gain " .. pwrbonus .. " Power, " .. defbonus .. " Defense, and " .. hpbonus .. " Hitpoints!", color_yellow)
     end
+end
+
+function from_dungeon_level(table)
+    for k, arr in pairs(table) do
+        if dungeon_level >= arr[1] then
+            return arr[2]
+        end
+    end
+    return 0
 end

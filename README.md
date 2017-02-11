@@ -10,10 +10,12 @@ This is a roguelike created following [this tutorial.](http://www.roguebasin.com
 * Press the corresponding letter to select an option inside a menu.
 * While casting aimable spells, press the arrow keys to aim, and C to cast.
 * Press Comma (,) to move down stairs.
+* Press R to restart when you've died.
 * Press ESC to exit.
 
 ## To Do
 * Saving and loading has yet to be implemented.
+* FOV has minor issues where it doesn't draw the outermost walls.
 
 ## Credits
 * [middleclass](https://github.com/kikito/middleclass) by Kikito

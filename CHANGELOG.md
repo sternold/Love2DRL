@@ -1,5 +1,11 @@
 # CHANGELOG
 
+# v 0.7
+* Bugfixes
+* Added spells (Giant's Strength, Lightning Storm)
+* Added restart button (R)
+* Randomized floor tables added
+
 # V 0.6
 * Random player progression added
 * Dungeon progression added
