@@ -10,8 +10,10 @@ This is a roguelike created following [this tutorial.](http://www.roguebasin.com
 * Press the corresponding letter to select an option inside a menu.
 * While casting aimable spells, press the arrow keys to aim, and C to cast.
 * Press Comma (,) to move down stairs.
+* Press L to look around.
+* Press X to open and close the tutorial.
 * Press R to restart when you've died.
-* Press ESC to exit.
+* Press ESC to save and exit.
 * Reach floor 10 and defeat all the monsters there to win!
 
 ## To Do

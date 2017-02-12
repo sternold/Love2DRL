@@ -32,20 +32,50 @@ LEVEL_UP_FACTOR = 150
 END_FLOOR = 10
 
 --colors
-color_player = {200, 50, 50, 255}
-color_black = {255, 255, 255, 255}
-color_white = {255, 255, 255, 255}
-color_green = {0, 250, 0, 255}
-color_dark_green = {0, 150, 0, 255}
+color_light_red = {250, 50, 50, 255}
 color_red = {250, 0, 0, 255}
 color_dark_red = {150, 0, 0, 255}
-color_blue = {25, 25, 250, 255}
-color_dark_blue = {10, 10, 150, 255}
-color_yellow = {200, 200, 0, 255}
-color_dark_yellow = {125, 125, 0, 245}
-color_violet = {200, 0, 150, 255}
-color_grey = {200, 200, 200, 255}
-color_grey_translucent = {200, 200, 200, 200}
+
+color_light_orange = {250, 150, 50, 255}
+color_orange = {250, 125, 0, 255}
+color_dark_orange = {150, 75, 0, 255}
+
+color_light_yellow = {250, 250, 50, 255}
+color_yellow = {250, 250, 50, 255}
+color_dark_yellow = {150, 150, 0, 245}
+
+color_light_green = {50, 250, 50, 255}
+color_green = {0, 250, 0, 255}
+color_dark_green = {0, 150, 0, 255}
+
+color_light_blue = {50, 250, 250, 255}
+color_blue = {50, 150, 250, 255}
+color_dark_blue = {50, 50, 250, 255}
+
+color_light_purple = {150, 50, 250, 255}
+color_purple = {150, 0, 250, 255}
+color_dark_purple = {75, 0, 150, 255}
+
+color_light_pink = {250, 50, 250, 255}
+color_pink = {250, 0, 250, 255}
+color_dark_pink = {150, 0, 150, 255}
+
+color_white = {255, 255, 255, 255}
+color_grey_1 = {225, 225, 225, 255}
+color_grey_2 = {195, 195, 195, 255}
+color_grey_3 = {160, 160, 160, 255}
+color_grey_4 = {125, 125, 125, 255}
+color_grey_5 = {95, 95, 95, 255}
+color_grey_6 = {65, 65, 65, 255}
+color_grey_7 = {30, 30, 30, 255}
+color_black = {0, 0, 0, 255}
+
+--color choices
+color_neutral = {255, 255, 255, 255}
+color_menu_grey = {200, 200, 200, 225}
+color_player = {215, 75, 60, 255}
+color_floor = {85, 85, 175, 255}
+color_wall = {175, 125, 80, 255}
 
 --fog of war
 fog_dark = {0, 0, 0, 255}
@@ -315,10 +345,10 @@ end
 
 function cast_heal()
     if player.fighter.hp == player.fighter.max_hp.get() then
-        console_print("You're already at full health.", color_green)
+        console_print("You're already at full health.", color_light_blue)
         return "cancelled"
     end
-    console_print("You're starting to feel better!", color_violet)
+    console_print("You're starting to feel better!", color_light_green)
     player.fighter:heal(HEAL_AMOUNT)
 end
 
@@ -365,7 +395,7 @@ function cast_confusion()
         return "cancelled"
     end
 
-    console_print("The " .. monster.name .. " seems dazed and confused!", color_violet)
+    console_print("The " .. monster.name .. " seems dazed and confused!", color_orange)
     add_invocation(monster, CONFUSION_DURATION, invoke_confusion)
 end
 
@@ -503,7 +533,7 @@ function ConfusedMonster:initialize()
 end
 
 function ConfusedMonster:take_turn()
-    console_print("The " .. self.owner.name .. " stumbles around!", color_violet)
+    console_print("The " .. self.owner.name .. " stumbles around!", color_orange)
     self.owner:move(love.math.random(-1, 1), love.math.random(-1, 1))
 end
 
@@ -624,6 +654,13 @@ function love.draw()
         console_draw()
         stats_draw()
 
+        if draw_visible_list then
+            list_visible_objects()
+        end
+        if draw_tutorial then
+            list_tutorial()
+        end
+
         if game_state == "menu" then
             inventory_menu(player.name .. "'s Inventory")
         elseif game_state == "aiming" then
@@ -670,6 +707,10 @@ function love.keypressed(key)
             if player.x == stairs.x and player.y == stairs.y then
                 next_level()
             end
+        elseif key == "l" then
+            worldactive = false
+            draw_visible_list = not draw_visible_list
+            draw_screen()
         elseif key == "i" and player_action ~= "drop" then
             worldactive = false
             game_state = "menu"
@@ -679,6 +720,10 @@ function love.keypressed(key)
             worldactive = false
             game_state = "menu"
             player_action = "drop"
+            draw_screen()
+        elseif key == "x" then
+            worldactive = false
+            draw_tutorial = not draw_tutorial
             draw_screen()
         else
             worldactive = false
@@ -755,7 +800,7 @@ function new_game()
     console_log = {}
     make_map()
 
-    local fighter_component = Fighter(100, 1, 4, 0, player_death)
+    local fighter_component = Fighter(100, 1, 3, 0, player_death)
     player = GameObject(player_start_x, player_start_y, "@", "player", color_player, true, fighter_component, nil)
     player.level = 1
     visible_range(PLAYER_VISIBLE_RANGE)
@@ -768,10 +813,11 @@ function new_game()
 
     --starting gear
     local equipment_component = Equipment('right hand', 1, 0, 0)
-    local item = GameObject(0, 0, '-', 'dagger', color_grey, false, nil, nil, nil, equipment_component)
+    local item = GameObject(0, 0, '-', 'dagger', color_grey_2, false, nil, nil, nil, equipment_component)
     table.insert(inventory, item)
     item.equipment:equip()
 
+    draw_tutorial = true
     draw_screen()
 end
 
@@ -926,41 +972,6 @@ function console_print(string, color)
     table.insert(console_log, {string, color})
 end
 
-function menu(header, options, width)
-    if table.maxn(options) > 26 then
-        error("Cannot have a menu with more than 26 options")
-    end
-    local x = 2
-    local y = 2
-    local height = table.maxn(options) + 2
-    rect_draw("fill", x, y, width, height, color_grey_translucent)
-    rect_draw("line", x, y, width, height, color_grey)
-    text_draw(header, x, y, color_white, 5, 5)
-    for k, v in pairs(options) do
-        text_draw("(" .. ALPHABET[k] .. ") " .. v, x, y + k, color_white, 5, 5)
-    end
-end
-
-function inventory_menu(header)
-    local options = {}
-    if table.maxn(inventory) ==0 then
-        table.insert(options, "Inventory is empty.")
-    else
-        for key, value in pairs(inventory) do
-            local text = value.name
-            if value.equipment ~= nil and value.equipment.is_equipped then
-                text = text .. " (on " .. value.equipment.slot .. ")"
-            end
-            table.insert(options, text)
-        end
-    end
-    menu(header, options, INVENTORY_WIDTH)
-end
-
-function main_menu()
-    menu("TOMB OF KING LOVE by Sternold", {"New Game", "Continue", "Quit"}, 31)
-end
-
 function random_choice(collection)
     local sum = 0
     for k,v in pairs(collection) do
@@ -1003,7 +1014,7 @@ function stats_draw()
     text_draw("LvL " .. player.level, 1, STAT_Y, color_white, 0, 4)
     
     --HP
-    bar_draw(7, STAT_Y, BAR_WIDTH, "HP", player.fighter.hp, player.fighter.max_hp.get(), color_red, color_grey)
+    bar_draw(7, STAT_Y, BAR_WIDTH, "HP", player.fighter.hp, player.fighter.max_hp.get(), color_light_green, color_red)
 
     --xp
     text_draw(player.fighter.xp .. "/" .. (LEVEL_UP_BASE + player.level * LEVEL_UP_FACTOR) .. "EXP", 28, STAT_Y, color_white, 0, 4) 
@@ -1033,11 +1044,79 @@ end
 function rect_draw(mode, x, y, w, h, color)
     G.setColor(color)
     G.rectangle(mode, x * SCALE, y * SCALE, w * SCALE, h * SCALE)
-    G.setColor(color_black)
+    G.setColor(color_neutral)
 end
 
 function text_draw(text, x, y, color, xoff, yoff)
     G.draw(G.newText(G.getFont(), {color or color_white, text}), x * SCALE + xoff, y * SCALE + yoff)
+end
+
+function menu(header, options, width)
+    if table.maxn(options) > 26 then
+        error("Cannot have a menu with more than 26 options")
+    end
+    local toptions = {}
+    for k,v in pairs(options) do
+        table.insert(toptions, {text="(" .. ALPHABET[k] .. ") " .. v, color=color_white})
+    end
+
+    window(header, toptions, 2, 2, width, table.maxn(options) + 4)
+end
+
+function inventory_menu(header)
+    local options = {}
+    if table.maxn(inventory) ==0 then
+        table.insert(options, "Inventory is empty.")
+    else
+        for key, value in pairs(inventory) do
+            local text = value.name
+            if value.equipment ~= nil and value.equipment.is_equipped then
+                text = text .. " (on " .. value.equipment.slot .. ")"
+            end
+            table.insert(options, text)
+        end
+    end
+    menu(header, options, INVENTORY_WIDTH)
+end
+
+function main_menu()
+    menu("TOMB OF KING LOVE by Sternold", {"New Game", "Continue", "Quit"}, 32)
+end
+
+function list_visible_objects()
+    local visobj = {}
+    for k,v in pairs(gameobjects) do
+        if objectmap[v.x][v.y].visibility == fog_visible then
+            table.insert(visobj, {text = "[" .. v.char .. "] " .. v.name, color=v.color})
+        end
+    end
+    window("you see:", visobj, SCREEN_WIDTH - 35 - 2, 2, 35, table.maxn(visobj) + 4)
+end
+
+function list_tutorial()
+    local tutorial = {}
+    table.insert(tutorial, 1, {text="Press the ARROW keys to move.", color=color_white})
+    table.insert(tutorial, 3, {text="Press G to pick up items.", color=color_white})
+    table.insert(tutorial, 5, {text="Press I to open your inventory.", color=color_white})
+    table.insert(tutorial, 7, {text="Press D to drop an item.", color=color_white})
+    table.insert(tutorial, 9, {text="Press the corresponding letter to select an option inside a menu.", color=color_white})
+    table.insert(tutorial, 11, {text="While casting aimable spells, press the arrow keys to aim, and C to cast.", color=color_white})
+    table.insert(tutorial, 13, {text="Press Comma (,) to move down stairs.", color=color_white})
+    table.insert(tutorial, 15, {text="Press L to look around.", color=color_white})
+    table.insert(tutorial, 17, {text="Press R to restart when you've died.", color=color_white})
+    table.insert(tutorial, 19, {text="Press ESC to save and exit.", color=color_white})
+    table.insert(tutorial, 21, {text="Reach floor 10 and defeat all the monsters there to win!", color=color_white})
+    table.insert(tutorial, 35, {text="Press the X to close or open this tutorial.", color=color_white})
+    window("TUTORIAL", tutorial, 2, 2, SCREEN_WIDTH - 4, SCREEN_HEIGHT - 12)
+end
+
+function window(header, options, x, y, w, h)  
+    rect_draw("fill", x, y, w, h, color_menu_grey)
+    rect_draw("line", x, y, w, h, color_grey_2)
+    text_draw(header, x+1, y, color_white, 5, 5)
+    for k,v in pairs(options) do
+        text_draw(v.text, x, y + k + 1, v.color, 5, 5)
+    end
 end
 
 function game_over(text)
@@ -1156,15 +1235,15 @@ function place_objects(room)
     local max_items = from_dungeon_level({{1, 1}, {4, 2}})
  
     local item_chances = {}
-    item_chances['heal'] = 35 
-    item_chances['lightning'] = from_dungeon_level({{3, 10}})
-    item_chances['fireball'] =  from_dungeon_level({{2, 20}})
-    item_chances['confuse'] =   from_dungeon_level({{2, 10}})
-    item_chances['strength'] =   from_dungeon_level({{3, 20}})
-    item_chances['lightning_storm'] =   from_dungeon_level({{5, 5}})
-    item_chances['sword'] =   from_dungeon_level({{1, 5}})
-    item_chances['leather_armor'] =   from_dungeon_level({{1, 7}})
-    item_chances['scarf'] =   from_dungeon_level({{1, 3}})
+    item_chances['pot_heal'] = 35 
+    item_chances['scr_lightning'] = from_dungeon_level({{5, 10}})
+    item_chances['scr_fireball'] =  from_dungeon_level({{2, 10}})
+    item_chances['scr_confuse'] =   from_dungeon_level({{3, 5}})
+    item_chances['scr_strength'] =   from_dungeon_level({{4, 5}})
+    item_chances['scr_lightning_storm'] =   from_dungeon_level({{7, 5}})
+    item_chances['wpn_sword'] =   from_dungeon_level({{1, 5}})
+    item_chances['arm_l_armor'] =   from_dungeon_level({{1, 7}})
+    item_chances['acc_scarf'] =   from_dungeon_level({{1, 3}})
 
     local num_monsters = love.math.random(0, max_monsters)
 
@@ -1202,31 +1281,31 @@ function place_objects(room)
         if not is_blocked(x, y) then
             local item = nil
             local choice = random_choice(item_chances) 
-            if choice == "heal" then
+            if choice == "pot_heal" then
                 local item_component = Item(cast_heal)
-                item = GameObject(x, y, '!', 'healing potion', color_violet, false, nil, nil, item_component)
-            elseif choice == "confuse" then
+                item = GameObject(x, y, '!', 'healing potion', color_light_pink, false, nil, nil, item_component)
+            elseif choice == "scr_confuse" then
                 local item_component = Item(cast_confusion)
-                item = GameObject(x, y, '#', 'Scroll of Confusion', color_violet, false, nil, nil, item_component)   
-            elseif choice == "fireball" then
+                item = GameObject(x, y, '#', 'Scroll of Confusion', color_light_pink, false, nil, nil, item_component)   
+            elseif choice == "scr_fireball" then
                 local item_component = Item(cast_fireball)
                 item = GameObject(x, y, '#', 'Scroll of Fireball', color_dark_red, false, nil, nil, item_component)   
-            elseif choice == "strength" then
+            elseif choice == "scr_strength" then
                 local item_component = Item(cast_strength)
                 item = GameObject(x, y, '#', "Scroll of Giant's Strength", color_player, false, nil, nil, item_component)   
-            elseif choice == "lightning" then
+            elseif choice == "scr_lightning" then
                 local item_component = Item(cast_lightning)
                 item = GameObject(x, y, '#', 'Scroll of Lighning Bolt', color_yellow, false, nil, nil, item_component)
-            elseif choice == "lightning_storm" then
+            elseif choice == "scr_lightning_storm" then
                 local item_component = Item(cast_lightning_storm)
                 item = GameObject(x, y, '#', 'Scroll of Lightning Storm', color_dark_yellow, false, nil, nil, item_component)
-            elseif choice == "sword" then
-                local equipment_component = Equipment('right hand', 4, 0, 0)
-                item = GameObject(x, y, '|', 'sword', color_grey, false, nil, nil, nil, equipment_component)
-            elseif choice == "leather_armor" then
+            elseif choice == "wpn_sword" then
+                local equipment_component = Equipment('right hand', 3, 0, 0)
+                item = GameObject(x, y, '|', 'sword', color_grey_2, false, nil, nil, nil, equipment_component)
+            elseif choice == "arm_l_armor" then
                 local equipment_component = Equipment('chest', 0, 1, 0)
-                item = GameObject(x, y, '%', 'chainmail', color_grey, false, nil, nil, nil, equipment_component)
-            elseif choice == "scarf" then
+                item = GameObject(x, y, '%', 'leather armor', color_dark_orange, false, nil, nil, nil, equipment_component)
+            elseif choice == "acc_scarf" then
                 local equipment_component = Equipment('neck', 0, 0, 5)
                 item = GameObject(x, y, 'S', 'Scarf of Courage', color_red, false, nil, nil, nil, equipment_component)
             end
@@ -1251,9 +1330,9 @@ function tile_to_colortext(tile)
     local wall = tile.blocked
     local colortext = {{255, 255, 255, 255}, "?"}
     if wall then
-        colortext = {color_dark_blue, "#"}
+        colortext = {color_wall, "#"}
     else
-        colortext = {color_blue, "."}
+        colortext = {color_floor, "."}
     end 
     return colortext
 end
