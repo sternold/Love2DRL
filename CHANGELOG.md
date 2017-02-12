@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# v 0.9.2
+* loading hotfix
+
 # v 0.9.1
 * Saving hotfix
 
