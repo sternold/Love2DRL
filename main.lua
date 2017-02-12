@@ -802,12 +802,12 @@ function save_game()
     table.insert(savedata, 5, inventory)
     table.insert(savedata, 6, console_log)
     table.insert(savedata, 7, game_state)
-    persistence.store(love.filesystem.getSaveDirectory() .. "/" .. SAVE_FILE, savedata)
+    persistence.store(love.filesystem.getSaveDirectory() .. SAVE_FILE, savedata)
 end
 
 function load_game()
     if love.filesystem.isFile(SAVE_FILE) then
-        local savedata = persistence.load(love.filesystem.getSaveDirectory() .. "/" .. SAVE_FILE)
+        local savedata = persistence.load(love.filesystem.getSaveDirectory() .. SAVE_FILE)
         --load map
         objectmap = {}
         local lobjectmap = savedata[1]

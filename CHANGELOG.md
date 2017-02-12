@@ -1,5 +1,8 @@
 # CHANGELOG
 
+# v 0.9.1
+* Saving hotfix
+
 # v 0.9
 * minor bug fixed where using an item with the D key would open the Drop menu
 * Equipment system added
