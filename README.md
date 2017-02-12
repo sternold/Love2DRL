@@ -19,6 +19,9 @@ This is a roguelike created following [this tutorial.](http://www.roguebasin.com
 ## To Do
 * fix FOV: FOV has minor issues where it doesn't draw the outermost walls.
 * Boss mechanic
+* Class Selection
+* Improved Combat
+* Improved levelling
 
 ## Credits
 * [middleclass](https://github.com/kikito/middleclass) by Kikito

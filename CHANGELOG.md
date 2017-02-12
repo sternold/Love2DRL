@@ -1,5 +1,14 @@
 # CHANGELOG
 
+# v 1.0.0 RELEASE
+* Added a whole bunch of monster and items (goblins, kobolds, vampires, shields, rapiers and more!)
+* Added a vampirism mechanic
+* Fixed most bugs!
+
+# v 0.9.5
+* added configuration screen
+* added fullscreen function
+
 # v 0.9.4
 * added window feature
 * added look and tutorial window
