@@ -561,6 +561,7 @@ function love.load()
     love.window.setMode(SCREEN_WIDTH*SCALE, SCREEN_HEIGHT*SCALE)
     love.keyboard.setKeyRepeat(true)
     G.setFont(G.newFont("PS2P-R.ttf", SCALE))
+    love.filesystem.createDirectory(love.filesystem.getSaveDirectory())
 
     --initialize
     game_state = "menu"
@@ -788,13 +789,9 @@ function next_level()
 end
 
 function save_game()
-    if love.filesystem.isFile(SAVE_FILE) then
-        love.filesystem.remove(SAVE_FILE)
-    end
     if game_state == "dead" or player == nil then
         return
     end
-    love.filesystem.newFile(SAVE_FILE)
     local savedata = {}
     table.insert(savedata, 1, objectmap)
     table.insert(savedata, 3, gameobjects)
@@ -840,6 +837,9 @@ function load_game()
             if v.equipment ~= nil then
                 lequipment = Equipment(v.equipment.slot)
                 lequipment.is_equipped = v.equipment.is_equipped
+                lequipment.max_hp_bonus = v.equipment.max_hp_bonus
+                lequipment.power_bonus = v.equipment.power_bonus
+                lequipment.defense_bonus = v.equipment.defense_bonus
             end
             local lgameobject = GameObject(v.x, v.y, v.char, v.name, v.color, v.blocks, lfighter, lai, litem, lequipment)
             for k1, inv in pairs(v.invocations) do
@@ -870,6 +870,9 @@ function load_game()
             if v.equipment ~= nil then
                 lequipment = Equipment(v.equipment.slot)
                 lequipment.is_equipped = v.equipment.is_equipped
+                lequipment.max_hp_bonus = v.equipment.max_hp_bonus
+                lequipment.power_bonus = v.equipment.power_bonus
+                lequipment.defense_bonus = v.equipment.defense_bonus
             end
             local litem = GameObject(v.x, v.y, v.char, v.name, v.color, false, nil, nil, litem_component, lequipment)
             table.insert(inventory, litem)
@@ -1471,4 +1474,3 @@ function gameobjects_in_range(originx, originy, range)
     end 
     return targets
 end
-
