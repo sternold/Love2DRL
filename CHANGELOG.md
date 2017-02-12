@@ -1,5 +1,9 @@
 # CHANGELOG
 
+# v 0.9.4
+* added window feature
+* added look and tutorial window
+
 # v 0.9.3
 * save directory hotfix
 
