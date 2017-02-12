@@ -1,5 +1,11 @@
 # CHANGELOG
 
+# v 0.9
+* minor bug fixed where using an item with the D key would open the Drop menu
+* Equipment system added
+* Equipment added (Sword, Chainmail, Scarf of Courage)
+* Wincondition added (reach and defeat floor 10)
+
 # v 0.8.2
 * saving hotfix
 

@@ -12,9 +12,11 @@ This is a roguelike created following [this tutorial.](http://www.roguebasin.com
 * Press Comma (,) to move down stairs.
 * Press R to restart when you've died.
 * Press ESC to exit.
+* Reach floor 10 and defeat all the monsters there to win!
 
 ## To Do
-* FOV has minor issues where it doesn't draw the outermost walls.
+* fix FOV: FOV has minor issues where it doesn't draw the outermost walls.
+* Boss mechanic
 
 ## Credits
 * [middleclass](https://github.com/kikito/middleclass) by Kikito

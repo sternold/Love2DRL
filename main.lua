@@ -5,7 +5,7 @@ local G = love.graphics
 
 --constants
 ALPHABET = {"a", "b", "c", "d", "e", "f","g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"}
-DIRECTION = {{0, -1}, {0,1}, {-1,0}, {1,0},{-1,-1},{1,-1},{-1,1},{1,1},{0,0}}
+DIRECTIONS = {up = {0, -1}, down = {0,1}, left = {-1,0}, right = {1,0}, downleft = {-1,-1}, upleft = {1,-1}, downright = {-1,1}, upright = {1,1}, none = {0,0}}
 SAVE_FILE = "save.rl"
 SCALE = 16
 SCREEN_WIDTH = 80
@@ -29,6 +29,7 @@ STRENGTH_BONUS = 5
 STRENGTH_DURATION = 4
 LEVEL_UP_BASE = 200
 LEVEL_UP_FACTOR = 150
+END_FLOOR = 10
 
 --colors
 color_player = {200, 50, 50, 255}
@@ -59,10 +60,9 @@ worldactive = false
 objectmap = {}
 game_state = ""
 player_action = ""
-menu_active = false
 monster_count = -1
 aimable_spell = nil
-direction = "none"
+direction = DIRECTIONS["none"]
 dungeon_level = 1
 
 inventory = {}
@@ -96,7 +96,7 @@ end
 
 --GAMEOBJECT
 GameObject = class('GameObject')
-function GameObject:initialize(x, y, char, name, color, blocks, fighter, ai, item)
+function GameObject:initialize(x, y, char, name, color, blocks, fighter, ai, item, equipment)
     self.x = x
     self.y = y
     self.char = char
@@ -113,6 +113,13 @@ function GameObject:initialize(x, y, char, name, color, blocks, fighter, ai, ite
     end
     self.item = item or nil
     if self.item ~= nil then
+        self.item.owner = self
+    end
+    self.equipment = equipment or nil
+    if self.equipment ~= nil then
+        self.equipment.owner = self
+        --there must be an Item component for the Equipment component to work properly
+        self.item = Item()
         self.item.owner = self
     end
     self.invocations = {}
@@ -152,12 +159,42 @@ end
 --FIGHTER
 Fighter = class('Fighter')
 function Fighter:initialize(hp, defense, power, xp, death_function)
-    self.max_hp = hp
+    self.base_max_hp = hp
     self.hp = hp
-    self.defense = defense
-    self.power = power
+    self.base_defense = defense
+    self.base_power = power 
     self.xp = xp
     self.death_function = death_function or nil
+
+    self.max_hp = {
+        get = function()
+            local bonus = 0
+            for k,v in pairs(get_all_equipped(self.owner)) do
+                bonus = bonus + v.equipment.max_hp_bonus
+            end
+            return self.base_max_hp + bonus
+        end
+    }
+
+    self.defense = {
+        get = function()
+            local bonus = 0
+            for k,v in pairs(get_all_equipped(self.owner)) do
+                bonus = bonus + v.equipment.defense_bonus
+            end
+            return self.base_defense + bonus
+        end
+    }
+
+    self.power = {
+        get = function()
+            local bonus = 0
+            for k,v in pairs(get_all_equipped(self.owner)) do
+                bonus = bonus + v.equipment.power_bonus
+            end
+            return self.base_power + bonus
+        end
+    }
 end
 
 function Fighter:take_damage(damage)
@@ -173,7 +210,7 @@ function Fighter:take_damage(damage)
 end
 
 function Fighter:attack(target)
-    local damage = self.power - target.fighter.defense
+    local damage = self.power.get() - target.fighter.defense.get()
  
         if damage > 0 then
             console_print(self.owner.name .. ' attacks ' .. target.name .. ' for ' .. damage .. ' hit points.')
@@ -185,8 +222,8 @@ end
 
 function Fighter:heal(amount)
     self.hp = self.hp + amount
-    if self.hp > self.max_hp then
-        self.hp = self.max_hp
+    if self.hp > self.max_hp.get() then
+        self.hp = self.max_hp.get()
     end
 end
 
@@ -244,9 +281,18 @@ function Item:pick_up()
         table.remove(gameobjects, index_of(gameobjects, self.owner))
         console_print("You picked up a " .. self.owner.name .. "!", self.owner.color)
     end
+
+    local equipment = self.owner.equipment
+    if equipment ~= nil and get_equipped_in_slot(equipment.slot) == nil then
+        equipment:equip()
+    end
 end
 
 function Item:use()
+    if self.owner.equipment ~= nil then
+        self.owner.equipment:toggle_equip()
+        return
+    end
     if self.use_function ~= nil then
         if self.use_function() ~= "cancelled" then
             table.remove(inventory, index_of(inventory, self.owner))
@@ -257,15 +303,18 @@ function Item:use()
 end
 
 function Item:drop()
+    if self.owner.equipment ~= nil then
+        self.owner.equipment:dequip()
+    end
     table.insert(gameobjects, self.owner)
-    table.remove(inventory, index_of(self.owner))
+    table.remove(inventory, index_of(inventory, self.owner))
     self.owner.x = player.x
     self.owner.y = player.y
     console_print("you dropped a " .. self.owner.name .. ".", self.owner.color)
 end
 
 function cast_heal()
-    if player.fighter.hp == player.fighter.max_hp then
+    if player.fighter.hp == player.fighter.max_hp.get() then
         console_print("You're already at full health.", color_green)
         return "cancelled"
     end
@@ -286,7 +335,7 @@ end
 
 function cast_fireball()
     game_state = "aiming"
-    if direction == "none" then
+    if direction == DIRECTIONS["none"] then
         aimable_spell = cast_fireball
     else
         target = find_target(direction)
@@ -296,13 +345,13 @@ function cast_fireball()
             console_print("The " .. target.name .. " takes " .. FIREBALL_DAMAGE .. " fire damage!", color_red)
             target.fighter:take_damage(FIREBALL_DAMAGE)
             game_state = "playing"
-            direction = "none"
+            direction = DIRECTIONS["none"]
             aimable_spell = nil
             draw_screen()
         else
             console_print("The fireball splashes against the wall.")
             game_state = "playing"
-            direction = "none"
+            direction = DIRECTIONS["none"]
             aimable_spell = nil
             draw_screen()
         end
@@ -345,6 +394,61 @@ function cast_lightning_storm()
     end
 end
 
+--EQUIPMENT
+Equipment = class('equipment')
+function Equipment:initialize(slot, power_bonus, defense_bonus, max_hp_bonus)
+    self.slot = slot
+    self.is_equipped = false
+    self.power_bonus = power_bonus
+    self.defense_bonus = defense_bonus
+    self.max_hp_bonus = max_hp_bonus
+end
+
+function Equipment:toggle_equip()
+    if self.is_equipped then
+        self:dequip()
+    else
+        self:equip()
+    end
+end
+
+function Equipment:equip()
+    local old_equipment = get_equipped_in_slot(self.slot)
+    if old_equipment ~= nil then
+        old_equipment:dequip()
+    end
+    self.is_equipped = true
+    console_print("Equipped " .. self.owner.name .. " on " .. self.slot .. ".", color_blue)
+end
+
+function Equipment:dequip()
+    self.is_equipped = false
+    console_print("Dequipped " .. self.owner.name .. " on " .. self.slot .. ".", color_yellow)
+end
+
+function get_equipped_in_slot(slot)
+    for k, obj in pairs(inventory) do
+        if obj.equipment ~= nil and obj.equipment.slot == slot and obj.equipment.is_equipped then
+            return obj.equipment
+        end
+    end
+    return nil
+end
+
+function get_all_equipped(obj)
+    if obj == player then
+        local equipped = {}
+        for k,v in pairs(inventory) do
+            if v.equipment ~= nil and v.equipment.is_equipped then
+                table.insert(equipped, v)
+            end
+        end
+        return equipped
+    else
+        return {}
+    end
+end
+
 --INVOCATION
 Invocation = class('Invocation')
 function Invocation:initialize(duration, invoke_function)
@@ -376,13 +480,13 @@ end
 
 function invoke_strength(invocation, state)
     if not invocation.fired and state then
-        invocation.old_pwr = invocation.owner.fighter.power
-        new_pwr = invocation.owner.fighter.power + STRENGTH_BONUS
-        invocation.owner.fighter.power = new_pwr
+        invocation.old_pwr = invocation.owner.fighter.base_power
+        new_pwr = invocation.owner.fighter.base_power + STRENGTH_BONUS
+        invocation.owner.fighter.base_power = new_pwr
         invocation.fired = true
     elseif not state then
         console_print(invocation.owner.name .. " no longer feels powerful.", color_player)
-        invocation.owner.fighter.power = invocation.old_pwr
+        invocation.owner.fighter.base_power = invocation.old_pwr
         table.remove(invocation.owner.invocations, index_of(invocation))
     end
 end
@@ -486,9 +590,14 @@ function love.update(dt)
     end
 
     if monster_count == 0 and game_state == "playing" then
-        console_print("The floor seems quiet. Too quiet...", color_green)
-        draw_screen()
-        monster_count = monster_count - 1
+        if dungeon_level == END_FLOOR then
+            game_state = "won"
+            draw_screen()
+        else
+            console_print("The floor seems quiet. Too quiet...", color_green)
+            draw_screen()
+            monster_count = -1
+        end
     end 
 
     if player_action == "exit" then
@@ -517,15 +626,7 @@ function love.draw()
         if game_state == "menu" then
             inventory_menu(player.name .. "'s Inventory")
         elseif game_state == "aiming" then
-            if direction == "up" then
-                text_draw("*", player.x, player.y - 1, color_yellow, 0, 0)
-            elseif direction == "down" then
-                text_draw("*", player.x, player.y + 1, color_yellow, 0, 0)
-            elseif direction == "left" then
-                text_draw("*", player.x - 1, player.y, color_yellow, 0, 0)
-            elseif direction == "right" then
-                text_draw("*", player.x + 1, player.y, color_yellow, 0, 0)
-            end
+            text_draw("*", player.x + direction[1], player.y + direction[2], color_yellow, 0, 0)
         elseif game_state == "dead" then
             game_over("Death is inevitable.")
         elseif game_state == "won" then
@@ -534,6 +635,9 @@ function love.draw()
     else
         if game_state == "menu" then
             main_menu()
+            if no_save_data then
+                text_draw("No save data could be found.", 2, SCREEN_HEIGHT - 2, color_white, 1, 1)
+            end
         end
     end 
 end
@@ -565,6 +669,16 @@ function love.keypressed(key)
             if player.x == stairs.x and player.y == stairs.y then
                 next_level()
             end
+        elseif key == "i" and player_action ~= "drop" then
+            worldactive = false
+            game_state = "menu"
+            player_action = "inventory"
+            draw_screen()
+        elseif key == "d" and player_action ~= "inventory" then
+            worldactive = false
+            game_state = "menu"
+            player_action = "drop"
+            draw_screen()
         else
             worldactive = false
             player_action = "didnt-take-turn"
@@ -599,13 +713,13 @@ function love.keypressed(key)
             game_state = "casting"
         else
             if key == "left" or key == "kp4" then
-                direction = "left"
+                direction = DIRECTIONS["left"]
             elseif key == "right" or key == "kp6" then
-                direction = "right"
+                direction = DIRECTIONS["right"]
             elseif key == "up" or key == "kp8" then
-                direction = "up"
+                direction = DIRECTIONS["up"]
             elseif key == "down" or key == "kp2" then
-                direction = "down"
+                direction = DIRECTIONS["down"]
             end
         end
         draw_screen()
@@ -614,20 +728,9 @@ function love.keypressed(key)
             new_game()
         end
     end
+    
     if key == "escape" then
         player_action = "exit"
-    elseif key == "i" and player_action ~= "drop" then
-        if game_state == "playing" then
-            game_state = "menu"
-            player_action = "inventory"
-        end
-        draw_screen()
-    elseif key == "d" and player_action ~= "inventory" then
-        if game_state == "playing" then
-            game_state = "menu"
-            player_action = "drop"
-        end
-        draw_screen()
     end
 end
 
@@ -659,26 +762,37 @@ function new_game()
     --make map into a single image
     drawablemap = map_to_image(objectmap)
 
+    --Welcome message
     console_print("Welcome stranger, be prepared to perish in the tombs of LOVE!", color_red)
+
+    --starting gear
+    local equipment_component = Equipment('right hand', 1, 0, 0)
+    local item = GameObject(0, 0, '-', 'dagger', color_grey, false, nil, nil, nil, equipment_component)
+    table.insert(inventory, item)
+    item.equipment:equip()
+
     draw_screen()
 end
 
 function next_level()
     console_print("You take a moment to rest...", color_blue)
-    player.fighter:heal(round(player.fighter.max_hp / 2))
+    player.fighter:heal(round(player.fighter.max_hp.get() / 2))
     console_print("You descend deeper into the tomb of king LOVE...", color_red)
+    dungeon_level = dungeon_level + 1
     make_map()
     player.x = player_start_x
     player.y = player_start_y
     visible_range(PLAYER_VISIBLE_RANGE)
     drawablemap = map_to_image(objectmap)
-    dungeon_level = dungeon_level + 1
     draw_screen()
 end
 
 function save_game()
     if love.filesystem.isFile(SAVE_FILE) then
         love.filesystem.remove(SAVE_FILE)
+    end
+    if game_state == "dead" or player == nil then
+        return
     end
     love.filesystem.newFile(SAVE_FILE)
     local savedata = {}
@@ -688,8 +802,7 @@ function save_game()
     table.insert(savedata, 5, inventory)
     table.insert(savedata, 6, console_log)
     table.insert(savedata, 7, game_state)
-    local buf = persistence.store(love.filesystem.getSaveDirectory() .. "/" .. SAVE_FILE, savedata)
-    --todo
+    persistence.store(love.filesystem.getSaveDirectory() .. "/" .. SAVE_FILE, savedata)
 end
 
 function load_game()
@@ -713,8 +826,9 @@ function load_game()
             local lfighter = nil
             local lai = nil
             local litem = nil
+            local lequipment = nil
             if v.fighter ~= nil then
-                lfighter = Fighter(v.fighter.max_hp, v.fighter.defense, v.fighter.power, v.fighter.xp, monster_death)
+                lfighter = Fighter(v.fighter.base_max_hp, v.fighter.base_defense, v.fighter.base_power, v.fighter.xp, monster_death)
                 lfighter.hp = v.fighter.hp
             end
             if v.ai ~= nil then
@@ -723,7 +837,11 @@ function load_game()
             if v.item ~= nil then
                 litem = Item(v.item.use_function)
             end
-            local lgameobject = GameObject(v.x, v.y, v.char, v.name, v.color, v.blocks, lfighter, lai, litem)
+            if v.equipment ~= nil then
+                lequipment = Equipment(v.equipment.slot)
+                lequipment.is_equipped = v.equipment.is_equipped
+            end
+            local lgameobject = GameObject(v.x, v.y, v.char, v.name, v.color, v.blocks, lfighter, lai, litem, lequipment)
             for k1, inv in pairs(v.invocations) do
                 local linv = Invocation(inv.duration, inv.invoke_function)
                 linv.timer = inv.timer
@@ -735,7 +853,7 @@ function load_game()
         --load player
         local lplayer = savedata[4]
         local lfighter = lplayer.fighter
-        local fighter = Fighter(lfighter.max_hp, lfighter.defense, lfighter.power, lfighter.xp, player_death)
+        local fighter = Fighter(lfighter.base_max_hp, lfighter.base_defense, lfighter.base_power, lfighter.xp, player_death)
         fighter.hp = lfighter.hp
         player = GameObject(lplayer.x, lplayer.y, lplayer.char, "player", color_player, true, fighter, nil, nil)
         player.level = lplayer.level
@@ -744,8 +862,16 @@ function load_game()
         inventory = {}
         local linventory = savedata[5]
         for k,v in pairs(linventory) do
-            local litem_component = Item(v.item.use_function)
-            local litem = GameObject(v.x, v.y, v.char, v.name, v.color, false, nil, nil, litem_component)
+            local litem_component = nil
+            local lequipment = nil
+            if v.item ~= nil then
+                litem_component = Item(v.item.use_function)
+            end
+            if v.equipment ~= nil then
+                lequipment = Equipment(v.equipment.slot)
+                lequipment.is_equipped = v.equipment.is_equipped
+            end
+            local litem = GameObject(v.x, v.y, v.char, v.name, v.color, false, nil, nil, litem_component, lequipment)
             table.insert(inventory, litem)
         end
         
@@ -767,7 +893,9 @@ function load_game()
         visible_range(PLAYER_VISIBLE_RANGE)
         draw_screen()
     else
-        print("No save data found.")    
+        print("no save data could be found.")
+        no_save_data = true       
+        draw_screen()
     end
 end
 
@@ -779,6 +907,15 @@ function round(number)
     else
         return math.floor(number)
     end
+end
+
+function index_of(table, object)
+    for key, value in pairs(table) do
+        if value == object then
+            return key
+        end
+    end
+    return nil
 end
 
 function console_print(string, color)
@@ -795,9 +932,9 @@ function menu(header, options, width)
     local height = table.maxn(options) + 2
     rect_draw("fill", x, y, width, height, color_grey_translucent)
     rect_draw("line", x, y, width, height, color_grey)
-    text_draw(header, x, y, color_white, 4, 4)
+    text_draw(header, x, y, color_white, 5, 5)
     for k, v in pairs(options) do
-        text_draw("(" .. ALPHABET[k] .. ") " .. v, x, y + k, color_white, 4, 4)
+        text_draw("(" .. ALPHABET[k] .. ") " .. v, x, y + k, color_white, 5, 5)
     end
 end
 
@@ -807,7 +944,11 @@ function inventory_menu(header)
         table.insert(options, "Inventory is empty.")
     else
         for key, value in pairs(inventory) do
-            table.insert(options, value.name)
+            local text = value.name
+            if value.equipment ~= nil and value.equipment.is_equipped then
+                text = text .. " (on " .. value.equipment.slot .. ")"
+            end
+            table.insert(options, text)
         end
     end
     menu(header, options, INVENTORY_WIDTH)
@@ -815,109 +956,6 @@ end
 
 function main_menu()
     menu("TOMB OF KING LOVE by Sternold", {"New Game", "Continue", "Quit"}, 31)
-end
-
-function index_of(table, object)
-    for key, value in pairs(table) do
-        if value == object then
-            return key
-        end
-    end
-    return nil
-end
-
-function find_gameobject(x, y)
-    for k, v in pairs(gameobjects) do
-        if v.x == x and v.y == y then
-            return v
-        end
-    end
-    return nil
-end
-
-function closest_monster(max_range)
-    local closest_enemy = nil
-    local closest_dist = max_range + 1
- 
-    for key, value in pairs(gameobjects) do
-        if value.fighter ~= nil and value ~= player then
-            dist = player:distance_to(value)
-            if dist < closest_dist then
-                closest_enemy = value
-                closest_dist = dist
-            end
-        end
-    end
-    if closest_enemy ==nil then
-        return closest_enemy
-    elseif objectmap[closest_enemy.x][closest_enemy.y].visibility == fog_visible then
-        return closest_enemy
-    else
-        return nil
-    end
-end
-
-function find_target(direction)
-    if direction == "up" then
-        for y = player.y, 0, -1 do
-            if objectmap[player.x][y].blocked then
-                break
-            end
-            for k, v in pairs(gameobjects) do
-                if v.x == player.x and v.y == y and v.ai ~= nil then
-                    return v
-                end
-            end
-        end
-    elseif direction == "down" then
-        for y = player.y, MAP_HEIGHT do
-            if objectmap[player.x][y].blocked then
-                break
-            end
-            for k, v in pairs(gameobjects) do
-                if v.x == player.x and v.y == y and v.ai ~= nil then
-                    return v
-                end
-            end
-        end
-    elseif direction == "left" then
-        for x = player.x, 0, -1 do
-            if objectmap[x][player.y].blocked then
-                break
-            end
-            for k, v in pairs(gameobjects) do
-                if v.x == x and v.y == player.y and v.ai ~= nil then
-                    return v
-                end
-            end
-        end
-    elseif direction == "right" then
-        for x = player.x, MAP_WIDTH do
-            if objectmap[x][player.y].blocked then
-                break
-            end
-            for k, v in pairs(gameobjects) do
-                if v.x == x and v.y == player.y and v.ai ~= nil then
-                    return v
-                end
-            end
-        end
-    else
-        return 'wrong_direction'
-    end
-end
-
-function gameobjects_in_range(originx, originy, range)
-    local targets = {}
-    for x = originx - range, originx + range do
-        for y = originy - range, originy + range do
-            gob = find_gameobject(x, y)
-            if gob ~= nil then
-                table.insert(targets, gob)
-            end
-        end
-    end 
-    return targets
 end
 
 function random_choice(collection)
@@ -962,14 +1000,14 @@ function stats_draw()
     text_draw("LvL " .. player.level, 1, STAT_Y, color_white, 0, 4)
     
     --HP
-    bar_draw(7, STAT_Y, BAR_WIDTH, "HP", player.fighter.hp, player.fighter.max_hp, color_red, color_grey)
+    bar_draw(7, STAT_Y, BAR_WIDTH, "HP", player.fighter.hp, player.fighter.max_hp.get(), color_red, color_grey)
 
     --xp
     text_draw(player.fighter.xp .. "/" .. (LEVEL_UP_BASE + player.level * LEVEL_UP_FACTOR) .. "EXP", 28, STAT_Y, color_white, 0, 4) 
 
     --Attributes
-    text_draw("PWR:" .. player.fighter.power, 41, STAT_Y, color_white, 0, 4)
-    text_draw("DEF:" .. player.fighter.defense, 47, STAT_Y, color_white, 0, 4)
+    text_draw("PWR:" .. player.fighter.power.get(), 41, STAT_Y, color_white, 0, 4)
+    text_draw("DEF:" .. player.fighter.defense.get(), 47, STAT_Y, color_white, 0, 4)
     
     --Dungeon level
     text_draw("Floor " .. dungeon_level, SCREEN_WIDTH - 10, STAT_Y, color_white, 0, 4)
@@ -1021,7 +1059,7 @@ function make_map()
     local rooms = {}
     local x = 0
     local y = 0
-    monster_count = monster_count + 1
+    monster_count = 0
     for rums=0, MAX_ROOMS do
         --random width and height
         local w = love.math.random(ROOM_MIN_SIZE, ROOM_MAX_SIZE)
@@ -1071,7 +1109,12 @@ function make_map()
         x = x + dx
         y = y + dy
     end
-    stairs = GameObject(x, y, "<", "stairs", color_white)
+    if dungeon_level == END_FLOOR then
+        stairs = GameObject(1, 1, "<", "stairs", color_white)
+        console_print("The floor goes quiet...", color_red)
+    else
+        stairs = GameObject(x, y, "<", "stairs", color_white)
+    end
     table.insert(gameobjects, stairs)
 end
 
@@ -1116,6 +1159,9 @@ function place_objects(room)
     item_chances['confuse'] =   from_dungeon_level({{2, 10}})
     item_chances['strength'] =   from_dungeon_level({{3, 20}})
     item_chances['lightning_storm'] =   from_dungeon_level({{5, 5}})
+    item_chances['sword'] =   from_dungeon_level({{1, 5}})
+    item_chances['leather_armor'] =   from_dungeon_level({{1, 7}})
+    item_chances['scarf'] =   from_dungeon_level({{1, 3}})
 
     local num_monsters = love.math.random(0, max_monsters)
 
@@ -1171,6 +1217,15 @@ function place_objects(room)
             elseif choice == "lightning_storm" then
                 local item_component = Item(cast_lightning_storm)
                 item = GameObject(x, y, '#', 'Scroll of Lightning Storm', color_dark_yellow, false, nil, nil, item_component)
+            elseif choice == "sword" then
+                local equipment_component = Equipment('right hand', 4, 0, 0)
+                item = GameObject(x, y, '|', 'sword', color_grey, false, nil, nil, nil, equipment_component)
+            elseif choice == "leather_armor" then
+                local equipment_component = Equipment('chest', 0, 1, 0)
+                item = GameObject(x, y, '%', 'chainmail', color_grey, false, nil, nil, nil, equipment_component)
+            elseif choice == "scarf" then
+                local equipment_component = Equipment('neck', 0, 0, 5)
+                item = GameObject(x, y, 'S', 'Scarf of Courage', color_red, false, nil, nil, nil, equipment_component)
             end
             table.insert(gameobjects, item)
         end
@@ -1227,7 +1282,7 @@ function player_move_or_attack(dx, dy)
     end
 
     if target ~= nil then
-            print(target.fighter.hp .. "/" .. target.fighter.max_hp)
+        print(target.fighter.hp .. "/" .. target.fighter.max_hp.get())
         player.fighter:attack(target)
     else
         player:move(dx, dy)
@@ -1246,7 +1301,7 @@ function visible_range(range)
         end
     end
 
-    for k,v in pairs(DIRECTION) do
+    for k,v in pairs(DIRECTIONS) do
         fov_cast_light(1, 1, 0, 0, v[1], v[2], 0, range)
         fov_cast_light(1, 1, 0, v[1], 0, 0, v[2], range)
     end
@@ -1324,10 +1379,10 @@ function check_level_up()
         local pwrbonus = math.random(0, 1)
         local defbonus = math.random(0, 1)
         local hpbonus = math.random(1, 2)
-        player.fighter.power = player.fighter.power + pwrbonus
-        player.fighter.defense = player.fighter.defense + defbonus
-        player.fighter.max_hp = player.fighter.max_hp + hpbonus
-        player.fighter.hp = player.fighter.max_hp
+        player.fighter.base_power = player.fighter.base_power + pwrbonus
+        player.fighter.base_defense = player.fighter.base_defense + defbonus
+        player.fighter.base_max_hp = player.fighter.base_max_hp + hpbonus
+        player.fighter.hp = player.fighter.max_hp.get()
         console_print("You gain " .. pwrbonus .. " Power, " .. defbonus .. " Defense, and " .. hpbonus .. " Hitpoints!", color_yellow)
     end
 end
@@ -1340,3 +1395,80 @@ function from_dungeon_level(table)
     end
     return 0
 end
+
+--COMBAT
+function find_gameobject(x, y)
+    for k, v in pairs(gameobjects) do
+        if v.x == x and v.y == y then
+            return v
+        end
+    end
+    return nil
+end
+
+function closest_monster(max_range)
+    local closest_enemy = nil
+    local closest_dist = max_range + 1
+ 
+    for key, value in pairs(gameobjects) do
+        if value.fighter ~= nil and value ~= player then
+            dist = player:distance_to(value)
+            if dist < closest_dist then
+                closest_enemy = value
+                closest_dist = dist
+            end
+        end
+    end
+    if closest_enemy ==nil then
+        return closest_enemy
+    elseif objectmap[closest_enemy.x][closest_enemy.y].visibility == fog_visible then
+        return closest_enemy
+    else
+        return nil
+    end
+end
+
+function find_target(direction)
+    if direction == DIRECTIONS["none"] then
+        return 'wrong_direction'
+    end
+
+    local xlimit = 0
+    local ylimit = 0
+    if direction[1] == 1 then
+        xlimit = MAP_WIDTH
+    end
+    if direction[2] == -1 then
+        ylimit = MAP_HEIGHT
+    end
+
+    local x = player.x
+    local y = player.y
+
+    while x ~= xlimit and y ~= ylimit do
+        if objectmap[x][y].blocked then
+                break
+            end
+            for k, v in pairs(gameobjects) do
+                if v.x == x and v.y == y and v.ai ~= nil then
+                    return v
+                end
+            end
+            x = x + direction[1]
+            y = y + direction[2]
+    end
+end
+
+function gameobjects_in_range(originx, originy, range)
+    local targets = {}
+    for x = originx - range, originx + range do
+        for y = originy - range, originy + range do
+            gob = find_gameobject(x, y)
+            if gob ~= nil then
+                table.insert(targets, gob)
+            end
+        end
+    end 
+    return targets
+end
+
