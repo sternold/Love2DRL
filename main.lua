@@ -870,16 +870,23 @@ function love.keypressed(key)
             if index_of(ALPHABET, key) == 1 then
                 player.fighter.base_power = player.fighter.base_power + 1
                 console_print("You gain 1 Power!", color_yellow)
+                game_state = "playing"
+                player.fighter.hp = player.fighter.max_hp.get()     
+                draw_screen() 
             elseif index_of(ALPHABET, key) == 2 then
                 player.fighter.base_defense = player.fighter.base_defense + 1
                 console_print("You gain 1 defense!", color_yellow)
+                game_state = "playing"
+                player.fighter.hp = player.fighter.max_hp.get()     
+                draw_screen() 
             elseif index_of(ALPHABET, key) == 3 then
                 player.fighter.base_max_hp = player.fighter.base_max_hp + 5
                 console_print("You gain 5 HP!", color_yellow)
+                game_state = "playing"
+                player.fighter.hp = player.fighter.max_hp.get()     
+                draw_screen() 
             end
-            game_state = "playing"
-            player.fighter.hp = player.fighter.max_hp.get()     
-            draw_screen()    
+               
         else 
             game_state = "playing"
             draw_screen()
