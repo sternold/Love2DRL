@@ -1,5 +1,13 @@
 # CHANGELOG
 
+# v 1.1 
+* Fixed random generation bug
+* Added food items
+* Added a saving dialog
+* Changed combat system to be relevant in later levels
+* Added a non-random levelup screen
+* Added sound
+
 # v 1.0.0 RELEASE
 * Added a whole bunch of monster and items (goblins, kobolds, vampires, shields, rapiers and more!)
 * Added a vampirism mechanic

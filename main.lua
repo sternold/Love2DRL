@@ -176,10 +176,11 @@ function GameObject:move_towards(target_x, target_y)
     local dy = target_y - self.y
     local distance = math.sqrt(math.pow(dx, 2) + math.pow(dy, 2))
 
-    --this should be round, but it's lua
     dx = round(dx / distance)
     dy = round(dy / distance)
     self:move(dx, dy)
+
+    
 end
 
 function GameObject:distance_to(other)
@@ -242,8 +243,13 @@ function Fighter:take_damage(damage)
 end
 
 function Fighter:attack(target)
-    local damage = self.power.get() - target.fighter.defense.get()
- 
+    local damage = 0
+    local chances = self.power.get() * 2
+    for i = 0, chances do
+        if love.math.random(1, 2 + target.fighter.defense.get()) == 1 then
+            damage = damage + 1
+        end
+    end
         if damage > 0 then
             console_print(self.owner.name .. ' attacks ' .. target.name .. ' for ' .. damage .. ' hit points.')
             target.fighter:take_damage(damage)
@@ -352,6 +358,7 @@ function eat(self)
             v.weakness = true
         end
     end
+    console_print("You eat a some " .. self.owner.name .. "!", color_green)
 end
 
 function cast_heal()
@@ -573,8 +580,8 @@ end
 
 function invoke_vampirism(invocation, state)
     if state then
-        invocation.owner.fighter.base_defense = 50
-        invocation.owner.fighter.base_power = 50
+        invocation.owner.fighter.base_defense = 30
+        invocation.owner.fighter.base_power = 30
         invocation.owner.fighter.base_max_hp = 1
         invocation.owner.fighter.hp = 1
         invocation.owner.colortext = G.newText(G.getFont(), {color_white, "w"})
@@ -654,6 +661,15 @@ function love.load()
     --config
     love.filesystem.createDirectory(love.filesystem.getSaveDirectory())
     config = load_config()
+
+    --sound
+    attack_sound = love.audio.newSource("resource/sound/attack.mp3")
+    attack_sound:setVolume(0.005)
+    bg_sound = love.audio.newSource("resource/sound/bg.mp3")
+    bg_sound:setLooping(true)
+    bg_sound:setVolume(0.1)
+    bg_sound:play()
+
     
     --options
     love.window.setTitle("The Tomb of King LOVE")  
@@ -701,6 +717,7 @@ function love.update(dt)
     end 
 
     if player_action == "exit" then
+        game_state = "playing"
         save_game()
         love.event.quit()
     end
@@ -731,13 +748,19 @@ function love.draw()
         end
 
         if game_state == "menu" then
-            inventory_menu(player.name .. "'s Inventory")
+            if player_action == "level_up" then
+                level_up_menu()
+            else
+                inventory_menu(player.name .. "'s Inventory")
+            end
         elseif game_state == "aiming" then
             text_draw("*", player.x + direction[1], player.y + direction[2], color_yellow, 0, 0)
         elseif game_state == "dead" then
             game_over("Death is inevitable.")
         elseif game_state == "won" then
             game_over("A WINNER IS YOU!")
+        elseif game_state == "exit" then
+            game_over("Your game has been saved. \n Press any key to exit...")
         end
     else
         if game_state == "menu" then
@@ -757,17 +780,17 @@ function love.keypressed(key)
     if game_state == "playing" then
         worldactive = true
         if key == "left" or key == "kp4" then
-            player_move_or_attack(-1, 0)
             player_action = "left"
+            player_move_or_attack(-1, 0)
         elseif key == "right" or key == "kp6" then
-            player_move_or_attack(1, 0)
             player_action = "right"
+            player_move_or_attack(1, 0)       
         elseif key == "up" or key == "kp8" then
-            player_move_or_attack(0, -1)
             player_action = "up"
+            player_move_or_attack(0, -1)      
         elseif key == "down" or key == "kp2" then
-            player_move_or_attack(0, 1)
             player_action = "down"
+            player_move_or_attack(0, 1)
         elseif key == "g" then
             for key, value in pairs(gameobjects) do
                 if value.item ~= nil and value.x == player.x and value.y == player.y then
@@ -803,7 +826,7 @@ function love.keypressed(key)
             player_action = "didnt-take-turn"
         end
     elseif game_state == "menu" then
-        if inventory[index_of(ALPHABET, key)] ~= nil then
+        if inventory[index_of(ALPHABET, key)] ~= nil and (player_action == "inventory" or player_action == "drop") then
             if player_action == "inventory" then
                 game_state = "playing"
                 inventory[index_of(ALPHABET, key)].item:use();
@@ -843,6 +866,20 @@ function love.keypressed(key)
                 end
                 draw_screen()
             end
+        elseif player_action == "level_up" then
+            if index_of(ALPHABET, key) == 1 then
+                player.fighter.base_power = player.fighter.base_power + 1
+                console_print("You gain 1 Power!", color_yellow)
+            elseif index_of(ALPHABET, key) == 2 then
+                player.fighter.base_defense = player.fighter.base_defense + 1
+                console_print("You gain 1 defense!", color_yellow)
+            elseif index_of(ALPHABET, key) == 3 then
+                player.fighter.base_max_hp = player.fighter.base_max_hp + 5
+                console_print("You gain 5 HP!", color_yellow)
+            end
+            game_state = "playing"
+            player.fighter.hp = player.fighter.max_hp.get()     
+            draw_screen()    
         else 
             game_state = "playing"
             draw_screen()
@@ -868,9 +905,14 @@ function love.keypressed(key)
         end
     end
     
-    if key == "escape" then
+    
+    if game_state == "exit" then
         player_action = "exit"
+    elseif key == "escape" then
+        game_state = "exit"
+        draw_screen()
     end
+
 end
 
 function draw_screen()
@@ -902,7 +944,7 @@ function new_game()
     console_log = {}
     make_map()
 
-    local fighter_component = Fighter(100, 1, 3, 0, player_death)
+    local fighter_component = Fighter(100, 0, 2, 0, player_death)
     player = GameObject(player_start_x, player_start_y, "@", "player", color_player, true, fighter_component, nil)
     player.level = 1
     visible_range(PLAYER_VISIBLE_RANGE)
@@ -914,8 +956,14 @@ function new_game()
     console_print("Welcome stranger, be prepared to perish in the tombs of LOVE!", color_red)
 
     --starting gear
+    --dagger
     local equipment_component = Equipment('right hand', 1, 0, 0)
     local item = GameObject(0, 0, '-', 'dagger', color_grey_2, false, nil, nil, nil, equipment_component)
+    table.insert(inventory, item)
+    item.equipment:equip()
+    --cloak
+    local equipment_component = Equipment('back', 0, 1, 0)
+    local item = GameObject(0, 0, '\\', 'Cloak of Protection', color_light_purple, false, nil, nil, nil, equipment_component)
     table.insert(inventory, item)
     item.equipment:equip()
 
@@ -1102,7 +1150,7 @@ function random_choice(collection)
     for k,v in pairs(collection) do
         sum = sum + v
     end
-    local dice = love.math.random(0, sum)
+    local dice = love.math.random(1, sum)
     sum = 0
     for k,v in pairs(collection) do
         sum = sum + v
@@ -1259,6 +1307,10 @@ function config_menu()
      menu("Configuration", options, 32)
 end
 
+function level_up_menu()
+    menu("What have you trained?", {"My Power", "My Defense", "My Courage"}, 32)
+end
+
 function game_over(text)
         rect_draw("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, {0,0,0,200})
         console_print(text, color_yellow)
@@ -1380,8 +1432,11 @@ function place_objects(room)
     local max_items = from_dungeon_level({{1, 1}, {4, 2}})
  
     local item_chances = {}
-    item_chances['pot_heal'] = 35 
-    item_chances['garlic_bread'] = from_dungeon_level({{2, 10}})
+    item_chances['pot_heal'] = 15 
+    item_chances['fd_bread'] = 10
+    item_chances['fd_apple'] = 5
+    item_chances['fd_garlic_bread'] = from_dungeon_level({{2, 10}})
+    item_chances['fd_stew'] = from_dungeon_level({{3, 15}})
     item_chances['pot_regen'] = from_dungeon_level({{4, 5}})
     item_chances['scr_lightning'] = from_dungeon_level({{5, 10}})
     item_chances['scr_fireball'] =  from_dungeon_level({{2, 10}})
@@ -1411,22 +1466,22 @@ function place_objects(room)
             local monster = nil
             local choice = random_choice(monster_chances) 
             if choice == "orc" then
-                local fighter_component = Fighter(20, 0, 4, 35, monster_death)
+                local fighter_component = Fighter(20, 0, 2, 35, monster_death)
                 local ai_component = BasicMonster()
                 monster = GameObject(x, y, "o", "Orc", color_green, true, fighter_component, ai_component)
             
             elseif choice == "goblin" then
-                local fighter_component = Fighter(15, 1, 3, 25, monster_death)
+                local fighter_component = Fighter(10, 1, 2, 25, monster_death)
                 local ai_component = BasicMonster()
                 monster = GameObject(x, y, "g", "Goblin", color_dark_green, true, fighter_component, ai_component)
             
             elseif choice == "kobold" then
-                local fighter_component = Fighter(10, 1, 3, 20, monster_death)
+                local fighter_component = Fighter(15, 1, 2, 25, monster_death)
                 local ai_component = BasicMonster()
                 monster = GameObject(x, y, "k", "Kobold", color_light_orange, true, fighter_component, ai_component)
             
             elseif choice == "giant_rat" then
-                local fighter_component = Fighter(25, 2, 5, 40, monster_death)
+                local fighter_component = Fighter(25, 2, 4, 40, monster_death)
                 local ai_component = BasicMonster()
                 monster = GameObject(x, y, "R", "Giant Rat", color_dark_blue, true, fighter_component, ai_component)
             
@@ -1437,12 +1492,12 @@ function place_objects(room)
                 add_invocation(monster, 999999, invoke_vampirism)
             
             elseif choice == "troll" then
-                local fighter_component = Fighter(40, 2, 8, 60, monster_death)
+                local fighter_component = Fighter(40, 2, 6, 60, monster_death)
                 local ai_component = BasicMonster()
                 monster = GameObject(x, y, "T", "Troll", color_dark_green, true, fighter_component, ai_component)
             
             elseif choice == "ogre" then
-                local fighter_component = Fighter(25, 0, 10, 70, monster_death)
+                local fighter_component = Fighter(25, 0, 8, 70, monster_death)
                 local ai_component = BasicMonster()
                 monster = GameObject(x, y, "O", "Ogre", color_grey_7, true, fighter_component, ai_component)
             end
@@ -1467,10 +1522,25 @@ function place_objects(room)
                 local item_component = Item(cast_heal)
                 item = GameObject(x, y, '!', 'healing potion', color_light_pink, false, nil, nil, item_component)
             
-            elseif choice == "garlic_bread" then
+            elseif choice == "fd_bread" then
                 local item_component = Item(eat)
-                item_component.ingredients = {"garlic"}
+                item_component.ingredients = {"flour", "milk"}
+                item = GameObject(x, y, 'm', 'Bread', color_dark_orange, false, nil, nil, item_component)
+            
+            elseif choice == "fd_garlic_bread" then
+                local item_component = Item(eat)
+                item_component.ingredients = {"flour", "milk", "garlic", "cheese"}
                 item = GameObject(x, y, 'm', 'Garlic Bread', color_dark_yellow, false, nil, nil, item_component)
+            
+            elseif choice == "fd_apple" then
+                local item_component = Item(eat)
+                item_component.ingredients = {"apple"}
+                item = GameObject(x, y, 'a', 'Apple', color_light_red, false, nil, nil, item_component)
+            
+            elseif choice == "fd_stew" then
+                local item_component = Item(eat)
+                item_component.ingredients = {"pork", "water", "milk", "onions", "garlic"}
+                item = GameObject(x, y, 'u', 'Stew', color_dark_orange, false, nil, nil, item_component)
 
             elseif choice == "pot_regen" then
                 local item_component = Item(cast_regen)
@@ -1497,23 +1567,23 @@ function place_objects(room)
                 item = GameObject(x, y, '#', 'Scroll of Lightning Storm', color_dark_yellow, false, nil, nil, item_component)
             
             elseif choice == "wpn_s_sword" then
-                local equipment_component = Equipment('right hand', 3, 0, 0, nil, nil)
+                local equipment_component = Equipment('right hand', 2, 0, 0, nil, nil)
                 item = GameObject(x, y, 't', 'shortsword', color_grey_2, false, nil, nil, nil, equipment_component)
             
             elseif choice == "wpn_l_sword" then
-                local equipment_component = Equipment('right hand', 5, 0, 0, nil, nil)
+                local equipment_component = Equipment('right hand', 3, 0, 0, nil, nil)
                 item = GameObject(x, y, '|', 'longsword', color_grey_2, false, nil, nil, nil, equipment_component)
             
             elseif choice == "wpn_g_sword" then
-                local equipment_component = Equipment('right hand', 7, 0, 0, nil, nil)
+                local equipment_component = Equipment('right hand', 5, 0, 0, nil, nil)
                 item = GameObject(x, y, '|', 'greatsword', color_grey_1, false, nil, nil, nil, equipment_component)
             
             elseif choice == "wpn_rapier" then
-                local equipment_component = Equipment('left hand', 2, 0, 0, nil, nil)
+                local equipment_component = Equipment('left hand', 1, 0, 0, nil, nil)
                 item = GameObject(x, y, 't', 'rapier', color_blue, false, nil, nil, nil, equipment_component)
             
             elseif choice == "arm_shield" then
-                local equipment_component = Equipment('left hand', 0, 2, 0, nil, nil)
+                local equipment_component = Equipment('left hand', 0, 1, 0, nil, nil)
                 item = GameObject(x, y, 'O', 'shield', color_orange, false, nil, nil, nil, equipment_component)
             
             elseif choice == "arm_l_armor" then
@@ -1537,7 +1607,7 @@ function place_objects(room)
                 item = GameObject(x, y, '8', 'Stone Mask', color_grey_1, false, nil, nil, nil, equipment_component)
             
             elseif choice == "wpn_silver_dagger" then
-                local equipment_component = Equipment('right hand', 2, 0, 0, nil, {"attack", use_silver_dagger})
+                local equipment_component = Equipment('right hand', 2, 0, 0, nil, {type="attack", usage_function=use_silver_dagger})
                 item = GameObject(x, y, '-', 'silver dagger', color_grey_5, false, nil, nil, nil, equipment_component)
             end
             table.insert(gameobjects, item)
@@ -1599,8 +1669,8 @@ function player_move_or_attack(dx, dy)
         player.fighter:attack(target)
         for k,v in pairs(inventory) do
             if v.equipment ~= nil then
-                if v.equipment.usage_table ~= nil and v.equipment.usage_table[1] == "attack" then
-                    local func = v.equipment.usage_table[2]
+                if v.equipment.usage_table ~= nil and v.equipment.usage_table.type == "attack" then
+                    local func = v.equipment.usage_table.usage_function
                     func(target)
                 end
             end
@@ -1691,20 +1761,15 @@ function square_radius(x, y, z)
 end
 
 --PROGRESSION
-function check_level_up()
+function check_level_up(type)
     local needed = LEVEL_UP_BASE + player.level * LEVEL_UP_FACTOR
     if player.fighter.xp >= needed then
         player.level = player.level + 1
         player.fighter.xp = player.fighter.xp - needed
         console_print("Your battle skills grow stronger! You reached level " .. player.level .. "!", color_yellow)
-        local pwrbonus = math.random(0, 1)
-        local defbonus = math.random(0, 1)
-        local hpbonus = math.random(1, 2)
-        player.fighter.base_power = player.fighter.base_power + pwrbonus
-        player.fighter.base_defense = player.fighter.base_defense + defbonus
-        player.fighter.base_max_hp = player.fighter.base_max_hp + hpbonus
-        player.fighter.hp = player.fighter.max_hp.get()
-        console_print("You gain " .. pwrbonus .. " Power, " .. defbonus .. " Defense, and " .. hpbonus .. " Hitpoints!", color_yellow)
+        game_state = "menu"
+        player_action = "level_up"
+        draw_screen()
     end
 end
 
