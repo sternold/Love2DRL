@@ -2,12 +2,12 @@
 class = require("libraries//middleclass")
 require("libraries//tablepersistence")
 require("libraries//util")
+require("libraries//extendedgraphics")
 require("resources//colors")
 require("resources//invocations")
 require("classes//tile")
 require("classes//Rect")
 require("classes//GameObject")
-require("graphics")
 require("constants")
 require("game")
 
