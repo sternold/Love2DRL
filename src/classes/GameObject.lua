@@ -1,4 +1,7 @@
-
+function obj_reg()
+    bitser.register("obj_pld", player_death)
+    bitser.register("obj_mod", monster_death)
+end
 
 --class definitions
 GameObject = class('GameObject')
@@ -28,7 +31,6 @@ function GameObject:initialize(x, y, char, name, color, blocks, fighter, ai, ite
         self.item = Item()
         self.item.owner = self
     end
-    self.colortext = graphics.newText(graphics.getFont(), {color, char})
 end
 
 function GameObject:move(dx, dy)
@@ -40,7 +42,7 @@ end
 
 function GameObject:draw()
     if game.map.tilemap[self.x][self.y].visibility == special_colors.fov_visible then
-        graphics.draw(self.colortext, self.x*SCALE, self.y*SCALE+5)
+        graphics.draw(graphics.newText(graphics.getFont(), {self.color, self.char}), self.x*SCALE, self.y*SCALE+5)
     end
 end
 
@@ -68,33 +70,6 @@ function Fighter:initialize(hp, defense, power, xp, death_function)
     self.hp = hp
     self.xp = xp
     self.death_function = death_function or nil
-    self.max_hp = {
-        get = function()
-            local bonus = 0
-            for k,v in pairs(get_all_equipped(self.owner)) do
-                bonus = bonus + v.equipment.max_hp_bonus
-            end
-            return self.base_max_hp + bonus
-        end
-    }
-    self.defense = {
-        get = function()
-            local bonus = 0
-            for k,v in pairs(get_all_equipped(self.owner)) do
-                bonus = bonus + v.equipment.defense_bonus
-            end
-            return self.base_defense + bonus
-        end
-    }
-    self.power = {
-        get = function()
-            local bonus = 0
-            for k,v in pairs(get_all_equipped(self.owner)) do
-                bonus = bonus + v.equipment.power_bonus
-            end
-            return self.base_power + bonus
-        end
-    }
     self.invocations = {}
 end
 
@@ -109,9 +84,9 @@ end
 
 function Fighter:attack(target)
     local damage = 0
-    local chances = self.power.get() * 2
+    local chances = self:power() * 2
     for i = 0, chances do
-        if love.math.random(1, 2 + target.fighter.defense.get()) == 1 then
+        if love.math.random(1, 2 + target.fighter:defense()) == 1 then
             damage = damage + 1
         end
     end
@@ -125,16 +100,39 @@ end
 
 function Fighter:heal(amount)
     self.hp = self.hp + amount
-    if self.hp > self.max_hp.get() then
-        self.hp = self.max_hp.get()
+    if self.hp > self:max_hp() then
+        self.hp = self:max_hp()
     end
+end
+
+function Fighter:max_hp()
+    local bonus = 0
+        for k,v in pairs(get_all_equipped(self.owner)) do
+            bonus = bonus + v.equipment.max_hp_bonus
+        end
+    return self.base_max_hp + bonus
+end
+
+function Fighter:defense()
+        local bonus = 0
+        for k,v in pairs(get_all_equipped(self.owner)) do
+            bonus = bonus + v.equipment.defense_bonus
+        end
+        return self.base_defense + bonus
+end
+
+function Fighter:power()
+        local bonus = 0
+        for k,v in pairs(get_all_equipped(self.owner)) do
+            bonus = bonus + v.equipment.power_bonus
+        end
+        return self.base_power + bonus
 end
 
 function player_death(target)
     game.state.playing = PLAYING_STATE.dead
     target.char = '%'
     target.color = colors.dark_red
-    target.colortext = graphics.newText(graphics.getFont(),{target.color, target.char})
     graphics.draw_screen()
 end
 
@@ -143,7 +141,6 @@ function monster_death(target)
     game.player.character.fighter.xp = game.player.character.fighter.xp + target.fighter.xp
     target.char = '%'
     target.color = colors.dark_red
-    target.colortext = graphics.newText(graphics.getFont(),{target.color, target.char})
     target.blocks = false
     target.fighter = nil
     target.ai = nil
@@ -262,9 +259,9 @@ function get_equipped_in_slot(slot)
 end
 
 function get_all_equipped(obj)
-    if obj == player then
+    if obj == game.player.character then
         local equipped = {}
-        for k,v in pairs(inventory) do
+        for k,v in pairs(game.player.inventory) do
             if v.equipment ~= nil and v.equipment.is_equipped then
                 table.insert(equipped, v)
             end

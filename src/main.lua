@@ -1,6 +1,6 @@
 --modules
 class = require("libraries//middleclass")
-require("libraries//tablepersistence")
+bitser = require("libraries//bitser")
 require("libraries//util")
 require("libraries//extendedgraphics")
 require("resources//colors")
@@ -41,13 +41,13 @@ function love.run()
 		if love.event then
 			love.event.pump()
 			for name, a,b,c,d,e,f in love.event.poll() do
-				if name == "quit" then
-					if not love.quit or not love.quit() then
-						return a
-					end
+			if name == "quit" then
+				if not love.quit or not love.quit() then
+					return a
 				end
-				love.handlers[name](a,b,c,d,e,f)
 			end
+			love.handlers[name](a,b,c,d,e,f)		
+            end
 		end
  
 		-- Update dt, as we'll be passing it to update
@@ -64,6 +64,22 @@ function love.run()
 end
 
 function love.load()
+    --binser
+    bitser.registerClass(Tile)
+    bitser.registerClass(Rect)
+    bitser.registerClass(GameObject)
+    bitser.registerClass(Fighter)
+    bitser.registerClass(BasicMonster)
+    bitser.registerClass(ConfusedMonster)
+    bitser.registerClass(Item)
+    bitser.registerClass(Equipment)
+    bitser.registerClass(Invocation)
+    game_reg()
+    inv_reg()
+    obj_reg()
+    local item_factory = require("resources//items")
+    item_reg()
+
     --config
     love.filesystem.createDirectory(love.filesystem.getSaveDirectory())
     config = load_config()
@@ -119,9 +135,9 @@ function love.update(dt)
     elseif game.state.base == STATE.menu then
         if game.state.menu == MENU_STATE.inventory then
 
-        elseif game.state.menu == PLAYING_STATE.dropping then
+        elseif game.state.menu == MENU_STATE.dropping then
 
-        elseif game.state.menu == PLAYING_STATE.level_up then
+        elseif game.state.menu == MENU_STATE.level_up then
 
         end
     elseif game.state.base == STATE.paused then
@@ -160,7 +176,7 @@ function love.draw()
         elseif game.state.playing == PLAYING_STATE.waiting then
 
         elseif game.state.playing == PLAYING_STATE.casting then
-            graphics.draw_aim()
+            aim_draw()
         elseif game.state.playing == PLAYING_STATE.dead then
 
         end
@@ -169,12 +185,13 @@ function love.draw()
         UI_draw()
         if game.state.menu == MENU_STATE.inventory then
             inventory_menu(game.player.character.name .. "'s Inventory")
-        elseif game.state.menu == PLAYING_STATE.dropping then
+        elseif game.state.menu == MENU_STATE.dropping then
             inventory_menu("Drop item: ")
-        elseif game.state.menu == PLAYING_STATE.level_up then
+        elseif game.state.menu == MENU_STATE.level_up then
             level_up_menu()
         end
     elseif game.state.base == STATE.paused then
+        game_over("Press ESC again to save and exit...")
     elseif game.state.base == STATE.cutscene then
         if game.state.cutscene == CUTSCENE_STATE.begin then
             --TODO
@@ -241,7 +258,7 @@ function love.keypressed(key)
                     end
                 end
             elseif key == "," then
-                if game.player.character.x == game.map.stairs.x and game.player.player.character.y == game.map.stairs.y then
+                if game.player.character.x == game.map.stairs.x and game.player.character.y == game.map.stairs.y then
                     game.next_level()
                 end
             elseif key == "l" then
@@ -252,6 +269,8 @@ function love.keypressed(key)
                 game.state.playing = PLAYING_STATE.waiting
                 draw_tutorial = not draw_tutorial
                 graphics.draw_screen()
+            elseif key == "escape" then
+                game.state.base = STATE.paused
             else
                 game.state.playing = PLAYING_STATE.waiting
             end
@@ -290,21 +309,23 @@ function love.keypressed(key)
             if game.player.inventory[table.index_of(ALPHABET, key)] then
                 game.player.inventory[table.index_of(ALPHABET, key)].item:drop();
             end
-        elseif game.state.menu == PLAYING_STATE.level_up then
+        elseif game.state.menu == MENU_STATE.level_up then
+            game.state.base = STATE.playing
+            game.state.playing = PLAYING_STATE.waiting
             if table.index_of(ALPHABET, key) == 1 then
                 game.player.character.fighter.base_power = game.player.character.fighter.base_power + 1
-                console_print("You gain 1 Power!", color_yellow)
-                game.player.character.fighter.hp = game.player.character.fighter.max_hp.get()     
+                game.console.print("You gain 1 Power!", color_yellow)
+                game.player.character.fighter.hp = game.player.character.fighter:max_hp()     
                 graphics.draw_screen() 
             elseif table.index_of(ALPHABET, key) == 2 then
                 game.player.character.fighter.base_defense = game.player.character.fighter.base_defense + 1
-                console_print("You gain 1 Defense!", color_yellow)
-                game.player.character.fighter.hp = game.player.character.fighter.max_hp.get()     
+                game.console.print("You gain 1 Defense!", color_yellow)
+                game.player.character.fighter.hp = game.player.character.fighter:max_hp()     
                 graphics.draw_screen() 
             elseif table.index_of(ALPHABET, key) == 3 then
                 game.player.character.fighter.base_max_hp = game.player.character.fighter.base_max_hp + 5
-                console_print("You gain 5 HP!", color_yellow)
-                game.player.character.fighter.hp = game.player.character.fighter.max_hp.get()     
+                game.console.print("You gain 5 HP!", color_yellow)
+                game.player.character.fighter.hp = game.player.character.fighter:max_hp()     
                 graphics.draw_screen() 
             else
                 game.state.base = STATE.menu
@@ -312,6 +333,11 @@ function love.keypressed(key)
         end
         graphics.draw_screen()
     elseif game.state.base == STATE.paused then
+        game.state.base = STATE.playing
+        if key == "escape" then
+            game.save_game()
+            love.event.quit() 
+        end
     elseif game.state.base == STATE.cutscene then
         if game.state.cutscene == CUTSCENE_STATE.begin then
 
@@ -344,16 +370,16 @@ end
 
 --init
 function save_config()
-    persistence.store(love.filesystem.getSaveDirectory() .. "/" .. CONFIG_FILE, config)
+    bitser.dumpLoveFile(CONFIG_FILE, config)
 end
 
 function load_config()
     if not love.filesystem.isFile(CONFIG_FILE) then
         local config_default = {fullscreen=false, tutorial=true}
-        persistence.store(love.filesystem.getSaveDirectory() .. "/" .. CONFIG_FILE, config_default)
+        bitser.dumpLoveFile(CONFIG_FILE, config_default)
         print("Default config loaded.")
     end
-    return persistence.load(love.filesystem.getSaveDirectory() .. "/" .. CONFIG_FILE)
+    return bitser.loadLoveFile(CONFIG_FILE)
 end
 
 --drawing
@@ -391,14 +417,14 @@ function UI_draw()
     graphics.text_draw("LvL " .. game.player.level, 1, SCREEN_HEIGHT - 6, colors.white, 0, 0)
     
     --HP
-    graphics.progress_bar_draw(1, STAT_DRAW_Y, 20, "HP", game.player.character.fighter.hp, game.player.character.fighter.max_hp.get(), colors.light_green, colors.red)
+    graphics.progress_bar_draw(1, STAT_DRAW_Y, 20, "HP", game.player.character.fighter.hp, game.player.character.fighter:max_hp(), colors.light_green, colors.red)
 
     --xp
     graphics.progress_bar_draw(1,  SCREEN_HEIGHT - 5, 12, "EXP", game.player.character.fighter.xp, (LEVEL_UP_BASE + game.player.level * LEVEL_UP_FACTOR), colors.dark_yellow, colors.grey_5)
 
     --Attributes
-    graphics.text_draw("PWR:" .. game.player.character.fighter.power.get(), 1, SCREEN_HEIGHT - 3, colors.white, 0, 0)
-    graphics.text_draw("DEF:" .. game.player.character.fighter.defense.get(), 1, SCREEN_HEIGHT - 2, colors.white, 0, 0)
+    graphics.text_draw("PWR:" .. game.player.character.fighter:power(), 1, SCREEN_HEIGHT - 3, colors.white, 0, 0)
+    graphics.text_draw("DEF:" .. game.player.character.fighter:defense(), 1, SCREEN_HEIGHT - 2, colors.white, 0, 0)
     
     --Dungeon level
     graphics.text_draw("Floor " .. game.map.level, SCREEN_WIDTH - 10, STAT_DRAW_Y, colors.white, 0, 0)
@@ -418,6 +444,10 @@ function console_draw(x)
     for i=1, max do
         graphics.text_draw(game.console.log[count + 1 - i][1], x, SCREEN_HEIGHT - i - 1, game.console.log[count + 1 - i][2] or nil, 0, 0)
     end
+end
+
+function aim_draw()
+    graphics.text_draw("*", game.player.character.x + direction.dx, game.player.character.y + direction.dy, colors.yellow, 0, 0)
 end
 
 function list_visible_objects()

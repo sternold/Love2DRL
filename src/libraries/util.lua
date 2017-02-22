@@ -62,3 +62,18 @@ function table.random(t)
         i = i + 1
     end
 end
+
+function table.tostring(t)
+local result, done = {}, {}
+  for k, v in ipairs( t ) do
+    table.insert( result, v)
+    done[ k ] = true
+  end
+  for k, v in pairs( t ) do
+    if not done[ k ] then
+      table.insert( result,
+        k .. "=" ..  v  )
+    end
+  end
+  return "{" .. table.concat( result, "," ) .. "}"
+end

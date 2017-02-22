@@ -1,4 +1,10 @@
 # CHANGELOG
+# v 1.2
+* Refactored entire codebase
+* Saving/loading is now dynamic, no more dropped variables
+* Increased food heal rate
+* Couple of Bugfixes
+* A whole lot of bugs probably
 
 # v 1.1 
 * Fixed random generation bug

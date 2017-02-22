@@ -6,8 +6,32 @@ game.console = {}
 game.state = {}
 
 --variables
-local aimable_spell = nil
-local direction = DIRECTIONS.none
+objectcolors = {}
+aimable_spell = nil
+direction = DIRECTIONS.none
+
+--bitser
+function game_reg()
+    bitser.register("gam_ba", game.new_game)
+    bitser.register("gam_bbl", game.next_level)
+    bitser.register("gam_bcen", game.save_game)
+    bitser.register("gam_bd", game.load_game)
+    bitser.register("gam_be", game.console.print)
+    bitser.register("gam_bff", game.map.make_map)
+    bitser.register("gam_bg", game.map.create_room)
+    bitser.register("gam_bhstr", game.map.create_h_tunnel)
+    bitser.register("gam_bimsk", game.map.create_v_tunnel)
+    bitser.register("gam_bjg", game.map.place_objects)
+    bitser.register("gam_bkg", game.map.is_blocked)
+    bitser.register("gam_blg", game.map.from_dungeon_level)
+    bitser.register("gam_bmg", game.map.find_gameobject)
+    bitser.register("gam_bng", game.map.closest_monster)
+    bitser.register("gam_bog", game.map.find_target)
+    bitser.register("gam_bpg", game.map.gameobjects_in_range)
+    bitser.register("gam_bqg", game.player.move_or_attack)
+    bitser.register("gam_brg", game.player.visible_range)
+    bitser.register("gam_bsg", game.player.check_level_up)
+end
 
 --init
 function game.new_game()
@@ -46,129 +70,30 @@ function game.new_game()
 end
 
 function game.next_level()
-    console_print("You take a moment to rest...", colors.red)
-    dungeon_level = dungeon_level + 1
-    make_map()
-    player.x = player_start_x
-    player.y = player_start_y
-    visible_range(PLAYER_VISIBILITY_RANGE)
-    drawablemap = map_to_image(objectmap)
+    game.console.print("You take a moment to rest...", colors.red)
+    game.map.level = game.map.level + 1
+    game.map.make_map()
+    game.player.character.x = player_start_x
+    game.player.character.y = player_start_y
+    game.player.character.fighter:heal(math.round(game.player.character.fighter:max_hp() / 2))
+    game.player.visible_range(PLAYER_VISIBILITY_RANGE)
     graphics.draw_screen()
 end
 
 --deprecated
 function game.save_game()
-    if game_state == "dead" or player == nil then
-        return
-    end
-    local savedata = {}
-    table.insert(savedata, 1, objectmap)
-    table.insert(savedata, 3, gameobjects)
-    table.insert(savedata, 4, player)
-    table.insert(savedata, 5, inventory)
-    table.insert(savedata, 6, console_log)
-    table.insert(savedata, 7, game_state)
-    persistence.store(love.filesystem.getSaveDirectory() .. "/" .. SAVE_FILE, savedata)
+    bitser.dumpLoveFile(SAVE_FILE, game)
 end
 
 --deprecated
 function game.load_game()
     if love.filesystem.isFile(SAVE_FILE) then
-        set_fullscreen(config.fullscreen)
-        local savedata = persistence.load(love.filesystem.getSaveDirectory() .. "/" .. SAVE_FILE)
-        --load map
-        objectmap = {}
-        local lobjectmap = savedata[1]
-        for x, arr in pairs(lobjectmap) do
-            objectmap[x] = {}
-            for y, til in pairs(arr) do
-                objectmap[x][y] = Tile(til.blocked, til.block_sight)
-                objectmap[x][y].visibility = til.visibility
-            end 
-        end
-        
-        --load objects [dont forget invocations]
-        gameobjects = {}
-        local lgameobjects = savedata[3]
-        for k,v in pairs(lgameobjects) do
-            local lfighter = nil
-            local lai = nil
-            local litem = nil
-            local lequipment = nil
-            if v.fighter ~= nil then
-                lfighter = Fighter(v.fighter.base_max_hp, v.fighter.base_defense, v.fighter.base_power, v.fighter.xp, monster_death)
-                lfighter.hp = v.fighter.hp
-            end
-            if v.ai ~= nil then
-                lai = BasicMonster()
-            end
-            if v.item ~= nil then
-                litem = Item(v.item.use_function)
-            end
-            if v.equipment ~= nil then
-                lequipment = Equipment(v.equipment.slot)
-                lequipment.is_equipped = v.equipment.is_equipped
-                lequipment.max_hp_bonus = v.equipment.max_hp_bonus
-                lequipment.power_bonus = v.equipment.power_bonus
-                lequipment.defense_bonus = v.equipment.defense_bonus
-            end
-            local lgameobject = GameObject(v.x, v.y, v.char, v.name, v.color, v.blocks, lfighter, lai, litem, lequipment)
-            for k1, inv in pairs(v.invocations) do
-                local linv = Invocation(inv.duration, inv.invoke_function)
-                linv.timer = inv.timer
-                table.insert(lgameobject.invocations, linv)
-            end
-            table.insert(gameobjects, lgameobject)
-        end
-        
-        --load player
-        local lplayer = savedata[4]
-        local lfighter = lplayer.fighter
-        local fighter = Fighter(lfighter.base_max_hp, lfighter.base_defense, lfighter.base_power, lfighter.xp, player_death)
-        fighter.hp = lfighter.hp
-        player = GameObject(lplayer.x, lplayer.y, lplayer.char, "player", colors.player, true, fighter, nil, nil)
-        player.level = lplayer.level
-        
-        --load inventory
-        inventory = {}
-        local linventory = savedata[5]
-        for k,v in pairs(linventory) do
-            local litem_component = nil
-            local lequipment = nil
-            if v.item ~= nil then
-                litem_component = Item(v.item.use_function)
-            end
-            if v.equipment ~= nil then
-                lequipment = Equipment(v.equipment.slot)
-                lequipment.is_equipped = v.equipment.is_equipped
-                lequipment.max_hp_bonus = v.equipment.max_hp_bonus
-                lequipment.power_bonus = v.equipment.power_bonus
-                lequipment.defense_bonus = v.equipment.defense_bonus
-            end
-            local litem = GameObject(v.x, v.y, v.char, v.name, v.color, false, nil, nil, litem_component, lequipment)
-            table.insert(inventory, litem)
-        end
-        
-        --load console_log
-        console_log = savedata[6]
-        
-        --load game_state
-        game_state = savedata[7]
-
-        --load stairs
-        for k, v in pairs(gameobjects) do
-            if v.name == "stairs" then
-                stairs = v
-            end
-        end 
-        
-        drawablemap = map_to_image(objectmap)
-        player_action = nil  
-        visible_range(PLAYER_VISIBLE_RANGE)
+        graphics.set_fullscreen(config.fullscreen)
+        game = bitser.loadLoveFile(SAVE_FILE)
+        game.player.visible_range(PLAYER_VISIBILITY_RANGE)
         graphics.draw_screen()
     else
-        print("no save data could be found.")
-        no_save_data = true       
+        print("no save data could be found.")      
         graphics.draw_screen()
     end
 end
@@ -243,8 +168,10 @@ function game.map.make_map()
         x = x + dx
         y = y + dy
     end
-    if dungeon_level == END_FLOOR then
+    if game.map.level == END_FLOOR then
         game.map.stairs = GameObject(1, 1, "<", "stairs", colors.white)
+    else
+        game.map.stairs = GameObject(x, y, "<", "stairs", colors.white)
     end
     table.insert(game.map.objects, game.map.stairs)
 end
@@ -273,30 +200,20 @@ function game.map.create_v_tunnel(y1, y2, x)
 end
 
 function game.map.place_objects(room)
-    local m = require("resources//monsters")
-    local monster_chances = m.chances
-    local monster_factory = m.factory
-    local i = require("resources//items")
-    local item_chances = i.chances
-    local item_factory = i.factory
+    local monster_factory = require("resources//monsters")
+    local item_factory = require("resources//items")
     
-    
-    --MONSTERS
     local max_monsters = game.map.from_dungeon_level({{1, 2}, {4, 3}, {6, 5}})
- 
-    --ITEMS
     local max_items = game.map.from_dungeon_level({{1, 1}, {4, 2}})
- 
-
+    
     local num_monsters = love.math.random(0, max_monsters)
-
     for i=0, num_monsters do
         --choose random spot for this monster
         local x = love.math.random(room.x1+1, room.x2-1)
         local y = love.math.random(room.y1+1, room.y2-1)
         
          if not game.map.is_blocked(x, y) then   
-            local choice = random_choice(monster_chances) 
+            local choice = random_choice(monster_factory.chances()) 
             local monster_func = monster_factory[choice]
             local monster = monster_func(x, y)
             game.map.monster_count = game.map.monster_count + 1
@@ -304,110 +221,16 @@ function game.map.place_objects(room)
         end 
     end
 
-    --choose random number of items
     local num_items = love.math.random(0, max_items)
- 
     for i=0, num_items do
-        --choose random spot for this item
         local x = love.math.random(room.x1+1, room.x2-1)
         local y = love.math.random(room.y1+1, room.y2-1)
  
-        --only place it if the tile is not blocked
         if not game.map.is_blocked(x, y) then
             local item = nil
-            local choice = random_choice(item_chances) 
-            if choice == "pot_heal" then
-                local item_component = Item(cast_heal)
-                item = GameObject(x, y, '!', 'healing potion', colors.light_pink, false, nil, nil, item_component)
-            
-            elseif choice == "fd_bread" then
-                local item_component = Item(eat)
-                item_component.var.ingredients = {"flour", "milk"}
-                item = GameObject(x, y, 'm', 'Bread', colors.dark_orange, false, nil, nil, item_component)
-            
-            elseif choice == "fd_garlic_bread" then
-                local item_component = Item(eat)
-                item_component.var.ingredients = {"flour", "milk", "garlic", "cheese"}
-                item = GameObject(x, y, 'm', 'Garlic Bread', colors.dark_yellow, false, nil, nil, item_component)
-            
-            elseif choice == "fd_apple" then
-                local item_component = Item(eat)
-                item_component.var.ingredients = {"apple"}
-                item = GameObject(x, y, 'a', 'Apple', colors.light_red, false, nil, nil, item_component)
-            
-            elseif choice == "fd_stew" then
-                local item_component = Item(eat)
-                item_component.var.ingredients = {"pork", "water", "milk", "onions", "garlic"}
-                item = GameObject(x, y, 'u', 'Stew', colors.dark_orange, false, nil, nil, item_component)
-
-            elseif choice == "pot_regen" then
-                local item_component = Item(cast_regen)
-                item = GameObject(x, y, '!', 'Potion of Regeneration', colors.dark_pink, false, nil, nil, item_component)
-            
-            elseif choice == "scr_confuse" then
-                local item_component = Item(cast_confusion)
-                item = GameObject(x, y, '#', 'Scroll of Confusion', colors.light_pink, false, nil, nil, item_component)   
-            
-            elseif choice == "scr_fireball" then
-                local item_component = Item(cast_fireball)
-                item = GameObject(x, y, '#', 'Scroll of Fireball', colors.dark_red, false, nil, nil, item_component)   
-            
-            elseif choice == "scr_strength" then
-                local item_component = Item(cast_strength)
-                item = GameObject(x, y, '#', "Scroll of Giant's Strength", colors.player, false, nil, nil, item_component)   
-            
-            elseif choice == "scr_lightning" then
-                local item_component = Item(cast_lightning)
-                item = GameObject(x, y, '#', 'Scroll of Lighning Bolt', colors.yellow, false, nil, nil, item_component)
-            
-            elseif choice == "scr_lightning_storm" then
-                local item_component = Item(cast_lightning_storm)
-                item = GameObject(x, y, '#', 'Scroll of Lightning Storm', colors.dark_yellow, false, nil, nil, item_component)
-            
-            elseif choice == "wpn_s_sword" then
-                local equipment_component = Equipment('right hand', 2, 0, 0, nil, nil)
-                item = GameObject(x, y, 't', 'shortsword', colors.grey_2, false, nil, nil, nil, equipment_component)
-            
-            elseif choice == "wpn_l_sword" then
-                local equipment_component = Equipment('right hand', 3, 0, 0, nil, nil)
-                item = GameObject(x, y, '|', 'longsword', colors.grey_2, false, nil, nil, nil, equipment_component)
-            
-            elseif choice == "wpn_g_sword" then
-                local equipment_component = Equipment('right hand', 5, 0, 0, nil, nil)
-                item = GameObject(x, y, '|', 'greatsword', colors.grey_1, false, nil, nil, nil, equipment_component)
-            
-            elseif choice == "wpn_rapier" then
-                local equipment_component = Equipment('left hand', 1, 0, 0, nil, nil)
-                item = GameObject(x, y, 't', 'rapier', colors.blue, false, nil, nil, nil, equipment_component)
-            
-            elseif choice == "arm_shield" then
-                local equipment_component = Equipment('left hand', 0, 1, 0, nil, nil)
-                item = GameObject(x, y, 'O', 'shield', colors.orange, false, nil, nil, nil, equipment_component)
-            
-            elseif choice == "arm_l_armor" then
-                local equipment_component = Equipment('chest', 0, 1, 0, nil, nil)
-                item = GameObject(x, y, '%', 'leather armor', colors.dark_orange, false, nil, nil, nil, equipment_component)
-            
-            elseif choice == "arm_c_armor" then
-                local equipment_component = Equipment('chest', 0, 2, 0, nil, nil)
-                item = GameObject(x, y, '%', 'chainmail armor', colors.grey_1, false, nil, nil, nil, equipment_component)
-            
-            elseif choice == "arm_p_armor" then
-                local equipment_component = Equipment('chest', 0, 3, 0, nil, nil)
-                item = GameObject(x, y, '$', 'plate armor', colors.grey_1, false, nil, nil, nil, equipment_component)
-            
-            elseif choice == "acc_scarf" then
-                local equipment_component = Equipment('neck', 0, 0, 5, nil, nil)
-                item = GameObject(x, y, 'S', 'Scarf of Courage', colors.red, false, nil, nil, nil, equipment_component)
-
-            elseif choice == "art_stone_mask" then
-                local equipment_component = Equipment('face', 0, 0, 0, equip_stone_mask, nil)
-                item = GameObject(x, y, '8', 'Stone Mask', colors.grey_1, false, nil, nil, nil, equipment_component)
-            
-            elseif choice == "wpn_silver_dagger" then
-                local equipment_component = Equipment('right hand', 2, 0, 0, nil, {type="attack", usage_function=use_silver_dagger})
-                item = GameObject(x, y, '-', 'silver dagger', colors.grey_5, false, nil, nil, nil, equipment_component)
-            end
+            local choice = random_choice(item_factory.chances()) 
+            local item_func = item_factory[choice]
+            local item = item_func(x, y)
             table.insert(game.map.objects, item)
         end
     end
@@ -436,7 +259,7 @@ function game.map.from_dungeon_level(table)
 end
 
 function game.map.find_gameobject(x, y)
-    for k, v in pairs(gameobjects) do
+    for k, v in pairs(game.map.objects) do
         if v.x == x and v.y == y then
             return v
         end
@@ -448,18 +271,18 @@ function game.map.closest_monster(max_range)
     local closest_enemy = nil
     local closest_dist = max_range + 1
  
-    for key, value in pairs(gameobjects) do
-        if value.fighter ~= nil and value ~= player then
-            dist = player:distance_to(value)
+    for key, value in pairs(game.map.objects) do
+        if value.fighter and value ~= game.player.character then
+            dist = game.player.character:distance_to(value)
             if dist < closest_dist then
                 closest_enemy = value
                 closest_dist = dist
             end
         end
     end
-    if closest_enemy ==nil then
+    if closest_enemy == nil then
         return closest_enemy
-    elseif objectmap[closest_enemy.x][closest_enemy.y].visibility == fog_visible then
+    elseif game.map.tilemap[closest_enemy.x][closest_enemy.y].visibility == special_colors.fov_visible then
         return closest_enemy
     else
         return nil
@@ -473,27 +296,27 @@ function game.map.find_target(direction)
 
     local xlimit = 0
     local ylimit = 0
-    if direction[1] == 1 then
+    if direction.dx == 1 then
         xlimit = MAP_WIDTH
     end
-    if direction[2] == -1 then
+    if direction.dy == -1 then
         ylimit = MAP_HEIGHT
     end
 
-    local x = player.x
-    local y = player.y
+    local x = game.player.character.x
+    local y = game.player.character.y
 
     while x ~= xlimit and y ~= ylimit do
-        if objectmap[x][y].blocked then
+        if game.map.tilemap[x][y].blocked then
                 break
             end
-            for k, v in pairs(gameobjects) do
+            for k, v in pairs(game.map.objects) do
                 if v.x == x and v.y == y and v.ai ~= nil then
                     return v
                 end
             end
-            x = x + direction[1]
-            y = y + direction[2]
+            x = x + direction.dx
+            y = y + direction.dy
     end
 end
 
@@ -524,7 +347,7 @@ function game.player.move_or_attack(dx, dy)
     end
 
     if target then
-        print(target.fighter.hp .. "/" .. target.fighter.max_hp.get())
+        print(target.fighter.hp .. "/" .. target.fighter:max_hp())
         game.player.character.fighter:attack(target)
         for k,v in pairs(game.player.inventory) do
             if v.equipment then

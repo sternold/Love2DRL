@@ -16,16 +16,16 @@ This is a roguelike created following [this tutorial.](http://www.roguebasin.com
 * Press ESC to save and exit.
 * Reach floor 10 and defeat all the monsters there to win!
 
-## To Do
+## Wishlist
 * fix FOV: FOV has minor issues where it doesn't draw the outermost walls.
 * Boss mechanic
 * Class Selection
 
-## Credits
+## Libraries Used
 * [middleclass](https://github.com/kikito/middleclass) by Kikito
 * [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P) by CodeMan38
 * [Improved Shadowcasting](http://www.roguebasin.com/index.php?title=Improved_Shadowcasting_in_Java) by Eben Howard
-* [TablePersistence](http://lua-users.org/wiki/TablePersistence)
+* [Bitser](https://github.com/gvx/bitser) by Robin Wellner
 
 ## Developed By
 
