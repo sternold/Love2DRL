@@ -3,6 +3,7 @@
 * Refactored entire codebase
 * Saving/loading is now dynamic, no more dropped variables
 * Increased food heal rate
+* Changed map graphics from text based to tile based
 * Couple of Bugfixes
 * A whole lot of bugs probably
 
