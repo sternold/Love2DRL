@@ -200,8 +200,8 @@ function game.map.create_v_tunnel(y1, y2, x)
 end
 
 function game.map.place_objects(room)
-    local monster_factory = require("resources//monsters")
-    local item_factory = require("resources//items")
+    local monster_factory = require("resources/monsters")
+    local item_factory = require("resources/items")
     
     local max_monsters = game.map.from_dungeon_level({{1, 2}, {4, 3}, {6, 5}})
     local max_items = game.map.from_dungeon_level({{1, 1}, {4, 2}})
