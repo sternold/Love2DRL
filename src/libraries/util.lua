@@ -1,3 +1,7 @@
+--A small library for some extra utilities.
+--@Author Tobi van Bronswijk
+
+
 --MATH
 function math.round(number)
     local toround = number - math.floor(number)
@@ -64,16 +68,16 @@ function table.random(t)
 end
 
 function table.tostring(t)
-local result, done = {}, {}
-  for k, v in ipairs( t ) do
-    table.insert( result, v)
-    done[ k ] = true
-  end
-  for k, v in pairs( t ) do
-    if not done[ k ] then
-      table.insert( result,
-        k .. "=" ..  v  )
+    local result, done = {}, {}
+    for k, v in ipairs( t ) do
+        table.insert( result, v)
+        done[ k ] = true
     end
-  end
-  return "{" .. table.concat( result, "," ) .. "}"
+    for k, v in pairs( t ) do
+        if not done[ k ] then
+        table.insert( result,
+            k .. "=" ..  v  )
+        end
+    end
+    return "{" .. table.concat( result, "," ) .. "}"
 end

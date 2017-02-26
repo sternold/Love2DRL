@@ -42,7 +42,7 @@ end
 
 function GameObject:draw()
     if game.map.tilemap[self.x][self.y].visibility == special_colors.fov_visible then
-        graphics.draw(graphics.newText(graphics.getFont(), {self.color, self.char}), self.x*SCALE, self.y*SCALE+5)
+        console.drawText(self.char, self.x, self.y, self.color)
     end
 end
 
@@ -133,7 +133,6 @@ function player_death(target)
     game.state.playing = PLAYING_STATE.dead
     target.char = '%'
     target.color = colors.dark_red
-    graphics.draw_screen()
 end
 
 function monster_death(target)
@@ -234,12 +233,12 @@ end
 
 function Equipment:equip()
     local old_equipment = get_equipped_in_slot(self.slot)
-    if old_equipment ~= nil then
+    if old_equipment then
         old_equipment:dequip()
     end
     self.is_equipped = true
     game.console.print("Equipped " .. self.owner.name .. " on " .. self.slot .. ".", color_blue)
-    if self.equip_function ~= nil then
+    if self.equip_function then
         self.equip_function()
     end
 end

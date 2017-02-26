@@ -34,8 +34,9 @@ function game_reg()
 end
 
 --init
-function game.new_game()
-    graphics.set_fullscreen(config.fullscreen)
+function game.new_game(class)
+    local class_factory = require("resources/classes")
+    console.setFullscreen(config.fullscreen)
     
     game.state.base = STATE.playing
     game.state.playing = PLAYING_STATE.waiting   
@@ -44,29 +45,16 @@ function game.new_game()
     game.map.level = 1
     game.map.make_map()
 
-    --player initialization
-    local fighter_component = Fighter(100, 0, 2, 0, player_death)
-    game.player.character = GameObject(player_start_x, player_start_y, "@", "player", colors.yellow, true, fighter_component, nil)
-    game.player.level = 1
-    game.player.visible_range(PLAYER_VISIBILITY_RANGE)
-
     --Welcome message
     game.console.print("Welcome stranger, be prepared to perish in the tombs of LOVE!", colors.red)
 
-    --starting gear
-    --dagger
-    local equipment_component = Equipment('right hand', 1, 0, 0)
-    local item = GameObject(0, 0, '-', 'dagger', colors.grey_2, false, nil, nil, nil, equipment_component)
-    table.insert(game.player.inventory, item)
-    item.equipment:equip()
-    --cloak
-    local equipment_component = Equipment('back', 0, 1, 0)
-    local item = GameObject(0, 0, '\\', 'Cloak of Protection', colors.light_purple, false, nil, nil, nil, equipment_component)
-    table.insert(game.player.inventory, item)
-    item.equipment:equip()
+    --player initialization
+    game.player.character = class_factory[class](player_start_x, player_start_y)
+    game.player.level = 1
+    game.player.visible_range(PLAYER_VISIBILITY_RANGE)
 
     draw_tutorial = config.tutorial
-    graphics.draw_screen()
+    console.draw()
 end
 
 function game.next_level()
@@ -77,7 +65,7 @@ function game.next_level()
     game.player.character.y = player_start_y
     game.player.character.fighter:heal(math.round(game.player.character.fighter:max_hp() / 2))
     game.player.visible_range(PLAYER_VISIBILITY_RANGE)
-    graphics.draw_screen()
+    console.draw()
 end
 
 --deprecated
@@ -88,13 +76,13 @@ end
 --deprecated
 function game.load_game()
     if love.filesystem.isFile(SAVE_FILE) then
-        graphics.set_fullscreen(config.fullscreen)
+        console.setFullscreen(config.fullscreen)
         game = bitser.loadLoveFile(SAVE_FILE)
         game.player.visible_range(PLAYER_VISIBILITY_RANGE)
-        graphics.draw_screen()
+        console.draw()
     else
         print("no save data could be found.")      
-        graphics.draw_screen()
+        console.draw()
     end
 end
 
@@ -388,7 +376,7 @@ function game.player.check_level_up(type)
         game.console.print("Your battle skills grow stronger! You reached level " .. game.player.level .. "!", colors.yellow)
         game.state.base = STATE.menu
         game.state.menu = MENU_STATE.level_up
-        graphics.draw_screen()
+        console.draw()
     end
 end
 

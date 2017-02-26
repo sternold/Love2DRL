@@ -9,11 +9,13 @@ function item_reg()
     bitser.register("it_litstr", cast_strength)
     bitser.register("it_stnmsk", cast_lightning_storm)
     bitser.register("it_sldg", equip_stone_mask)
+    bitser.register("it_stfmm", staff_love_dart)
 end
 
 item_factory = {
             pot_heal = function(x, y)
                 local item_component = Item(cast_heal)
+                item_component.var.amount = 20
                 local item = GameObject(x, y, '!', 'healing potion', colors.light_pink, false, nil, nil, item_component)
                 return item
             end,
@@ -43,31 +45,41 @@ item_factory = {
                 end,
             pot_regen = function(x, y)
                 local item_component = Item(cast_regen)
+                item_component.var.duration = 10
+                item_component.var.amount = 10
                 local item = GameObject(x, y, '!', 'Potion of Regeneration', colors.dark_pink, false, nil, nil, item_component)
                 return item
                 end,
             scr_confuse = function(x, y)
                 local item_component = Item(cast_confusion)
+                item_component.var.duration = 30
+                item_component.var.range = 5
                 local item = GameObject(x, y, '#', 'Scroll of Confusion', colors.light_pink, false, nil, nil, item_component)   
                 return item
                 end,
             scr_fireball = function(x, y)
                 local item_component = Item(cast_fireball)
+                item_component.var.damage = 25
                 local item = GameObject(x, y, '#', 'Scroll of Fireball', colors.dark_red, false, nil, nil, item_component)   
                 return item
                 end,
             scr_strength = function(x, y)
                 local item_component = Item(cast_strength)
+                item_component.var.duration = 10
                 local item = GameObject(x, y, '#', "Scroll of Giant's Strength", colors.player, false, nil, nil, item_component)   
                 return item
                 end,
             scr_lightning = function(x, y)
                 local item_component = Item(cast_lightning)
+                item_component.var.damage = 50
+                item_component.var.range = 5
                 local item = GameObject(x, y, '#', 'Scroll of Lighning Bolt', colors.yellow, false, nil, nil, item_component)
                 return item
                 end,
             scr_lightning_storm = function(x, y)
                 local item_component = Item(cast_lightning_storm)
+                item_component.var.damage = 40
+                item_component.var.range = 5
                 local item = GameObject(x, y, '#', 'Scroll of Lightning Storm', colors.dark_yellow, false, nil, nil, item_component)
                 return item
                 end,
@@ -166,71 +178,71 @@ function eat(self)
     game.console.print("You eat a some " .. self.owner.name .. "!", colors.green)
 end
 
-function cast_heal()
+function cast_heal(self)
     if game.player.character.fighter.hp == game.player.character.fighter:max_hp() then
         game.console.print("You're already at full health.", colors.light_blue)
         return "cancelled"
     end
     game.console.print("You're starting to feel better!", colors.light_green)
-    game.player.character.fighter:heal(20)
+    game.player.character.fighter:heal(self.var.amount)
 end
 
-function cast_regen()
+function cast_regen(self)
     game.console.print("The " .. game.player.character.name .. " slowly grows healthier!", colors.light_green)
-    add_invocation(game.player.character.fighter, REGEN_DURATION, invoke_regen)
+    add_invocation(game.player.character.fighter, self.var.duration, invoke_regen)
 end
 
-function cast_lightning()
-    local monster = game.map.closest_monster(SPELL_RANGE)
+function cast_lightning(self)
+    local monster = game.map.closest_monster(self.var.range)
     if monster == nil then
         game.console.print("No enemy in range.")
         return "cancelled"
     end
 
-    game.console.print("A lightning bolt strikes the " .. monster.name .. ", dealing " .. LIGHTNING_DAMAGE .. " damage!", colors.yellow)
-    monster.fighter:take_damage(LIGHTNING_DAMAGE)
+    game.console.print("A lightning bolt strikes the " .. monster.name .. ", dealing " .. self.var.damage .. " damage!", colors.yellow)
+    monster.fighter:take_damage(self.var.damage)
 end
 
-function cast_fireball()
+function cast_fireball(self)
     game.state.playing = PLAYING_STATE.casting
     if direction == DIRECTIONS.none then
-        aimable_spell = cast_fireball
+        aimable_spell = {func=cast_fireball, item=self}
         return
     else
         target = game.map.find_target(direction)
         if target == "wrong_direction" then
             game.console.print("Wrong key.")
         elseif target then
-            game.console.print("The " .. target.name .. " takes " .. FIREBALL_DAMAGE .. " fire damage!", colors.red)
-            target.fighter:take_damage(FIREBALL_DAMAGE)
+            game.console.print("The " .. target.name .. " takes " .. self.var.damage .. " fire damage!", colors.red)
+            target.fighter:take_damage(self.var.damage)
         else
             game.console.print("The fireball splashes against the wall.")
         end
         game.state.playing = PLAYING_STATE.waiting
         direction = DIRECTIONS.none
         aimable_spell = nil
-        graphics.draw_screen()
+        console.draw()
     end
 end
 
-function cast_confusion()
-    local monster = game.map.closest_monster(SPELL_RANGE)
+function cast_confusion(self)
+    local monster = game.map.closest_monster(self.var.range)
     if monster == nil then
         game.console.print("No enemy in range.")
         return "cancelled"
     end
 
     game.console.print("The " .. monster.name .. " seems dazed and confused!", color_orange)
-    add_invocation(monster, CONFUSION_DURATION, invoke_confusion)
+    add_invocation(monster, self.var.duration, invoke_confusion)
 end
 
-function cast_strength()
+function cast_strength(self)
     game.console.print("The " .. game.player.character.name .. " grows stronger!", colors.dark_purple)
-    add_invocation(game.player.character, STRENGTH_DURATION, invoke_strength)
+    add_invocation(game.player.character, self.var.duration, invoke_strength)
 end
 
-function cast_lightning_storm()
-    local gobjects = game.map.gameobjects_in_range(game.player.character.x, game.player.character.y, LIGHTNING_STORM_RANGE)
+function cast_lightning_storm(self)
+    local gobjects = game.map.gameobjects_in_range(game.player.character.x, game.player.character.y, self.var.range)
     if table.maxn(gobjects) == 0 then
         game.console.print(table.maxn(gobjects))
         game.console.print("No enemy in range.")
@@ -243,9 +255,38 @@ function cast_lightning_storm()
         end
     end
 
-    game.console.print("A lightning storm strikes " .. table.maxn(monsters) .. " targets, dealing " .. LIGHTNING_DAMAGE .. " damage to each!", colors.yellow)
+    game.console.print("A lightning storm strikes " .. table.maxn(monsters) .. " targets, dealing " .. self.var.damage .. " damage to each!", colors.yellow)
     for k, v in pairs(monsters) do
-        v.fighter:take_damage(LIGHTNING_DAMAGE)
+        v.fighter:take_damage(self.var.damage)
+    end
+end
+
+function staff_love_dart(self)
+    game.state.playing = PLAYING_STATE.casting
+    if direction == DIRECTIONS.none then
+        aimable_spell = {func=staff_love_dart, item=self}
+        if self.var.charges > 0 then
+            return 'cancelled'
+        else
+            return
+        end
+    else
+        target = game.map.find_target(direction)
+        if target == "wrong_direction" then
+            game.console.print("Wrong key.")
+        elseif target then
+            local dam = self.var.damage
+            game.console.print("The " .. target.name .. " takes " .. dam .. " love damage! " .. self.var.charges - 1 .. " charges left.", colors.light_purple)
+            target.fighter:take_damage(dam)
+        else
+            game.console.print("The dart splashes against the wall.")
+        end
+        self.var.charges = self.var.charges - 1
+        self.var.damage = love.math.random(15, 30)
+        game.state.playing = PLAYING_STATE.waiting
+        direction = DIRECTIONS.none
+        aimable_spell = nil
+        console.draw()
     end
 end
 

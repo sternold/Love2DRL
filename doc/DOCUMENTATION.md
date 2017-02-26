@@ -31,19 +31,19 @@ Table of Contents
 The overarching system by which the game runs is it's **state**. Depending on the `game.states.base`, the engine will draw screens or objects, will take certain actions and various input methods will be accepted. The following states are acceptable:
 
 ### pre_game
-This is the state the game finds itself in *prior* to starting a game. A player can *start a new game*, *load a game* or *edit the configurations* from this menu. The substate `game.states.pre_game` can have the values .
+This is the state the game finds itself in *prior* to starting a game. A player can *start a new game*, *load a game* or *edit the configurations* from this menu. The substate `game.states.pre_game` can have the values `main`, `new_game`, `load_game`, and `config`.
 
 ### playing
 This is the main state in which the game will find itself. In this state the player can *directly control his character*, *open a menu*, or *interact with the world*. The substate `game.states.playing` can have the values `active`, `waiting`, `casting` and `dead`.
 
 ### menu
-This state, while in-game, stops all the objects in the world from acting while the player moves through the menu(s). The world and objects are still drawn. The substate `game.states.menu` can have the values `inventory` and `dropping`.
+This state, while in-game, stops all the objects in the world from acting while the player moves through the menu(s). The world and objects are still drawn. The substate `game.states.menu` can have the values, `level_up`, `inventory` and `dropping`.
 
 ### paused
 This state is similar to the menu state, but only has a single possible menu. It allows the player to exit the game. It has no substates.
 
 ### cutscene
-This is a special state, in case of drawing non-standard objects to the screen. The substate `game.states.cutscene` can have the value `begin`.
+This is a special state, in case of drawing non-standard objects to the screen. The substate `game.states.cutscene` can have the value `begin`, `win` and `dead`.
 
 ---
 

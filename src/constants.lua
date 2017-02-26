@@ -63,9 +63,6 @@ CUTSCENE_STATE = {
 }
 
 --system
-SCALE = 16
-SCREEN_WIDTH = 80
-SCREEN_HEIGHT = 50
 MAP_WIDTH = 78
 MAP_HEIGHT = 43
 
@@ -80,21 +77,6 @@ CONFIG_FILE = "config.rl"
 --game
 CONFIG_DEFAULT = {fullscreen=false, tutorial=true}
 END_FLOOR = 10
-
----spells
-SPELL_RANGE = 6
-------lightning
-LIGHTNING_DAMAGE = 50
-LIGHTNING_STORM_RANGE = 5
-------confusion
-CONFUSION_DURATION = 30
-------fireball
-FIREBALL_DAMAGE = 25
-------strength
-STRENGTH_BONUS = 5
-STRENGTH_DURATION = 4
-------regeneration
-REGEN_DURATION = 6
 
 ---character
 LEVEL_UP_BASE = 200

@@ -1,19 +1,17 @@
 --modules
 class = require("libraries/middleclass")
 bitser = require("libraries/bitser")
+console = require("libraries/loveconsole")
 require("libraries/util")
-require("libraries/extendedgraphics")
 require("resources/colors")
+require("resources/classes")
 require("resources/invocations")
 require("classes/Tile")
 require("classes/Rect")
+require("resources/items")
 require("classes/GameObject")
 require("constants")
 require("game")
-
---function containers
-graphics = love.graphics
-config = {}
 
 --engine
 function love.run()
@@ -77,7 +75,6 @@ function love.load()
     game_reg()
     inv_reg()
     obj_reg()
-    local item_factory = require("resources/items")
     item_reg()
 
     --config
@@ -85,14 +82,13 @@ function love.load()
     config = load_config()
     
     --options
-    love.window.setMode(SCREEN_WIDTH*SCALE, SCREEN_HEIGHT*SCALE)
+    console.init(80, 50, 16)
     love.keyboard.setKeyRepeat(true)
-    graphics.setFont(graphics.newFont("resources/font/main.ttf", SCALE))
 
     --initialize
     game.state.base = STATE.pre_game
     game.state.pre_game = PRE_GAME_STATE.main
-    graphics.draw_screen()
+    console.draw()
 end
 
 function love.update(dt)
@@ -102,7 +98,7 @@ function love.update(dt)
         elseif game.state.pre_game == PRE_GAME_STATE.config then
 
         elseif game.state.pre_game == PRE_GAME_STATE.new_game then
-            game.new_game()
+            game.new_game(get_class_name(2))
         elseif game.state.pre_game == PRE_GAME_STATE.load_game then
             game.load_game()
         elseif game.state.pre_game == PRE_GAME_STATE.exit then
@@ -122,7 +118,7 @@ function love.update(dt)
             for k, v in pairs(game.player.character.fighter.invocations) do
                 v:invoke()
             end
-            graphics.draw_screen()
+            console.draw()
         elseif game.state.playing == PLAYING_STATE.waiting then
 
         elseif game.state.playing == PLAYING_STATE.casting then
@@ -130,7 +126,7 @@ function love.update(dt)
         elseif game.state.playing == PLAYING_STATE.dead then
             game.state.base = STATE.cutscene
             game.state.cutscene = CUTSCENE_STATE.dead
-            graphics.draw_screen()
+            console.draw()
         end
     elseif game.state.base == STATE.menu then
         if game.state.menu == MENU_STATE.inventory then
@@ -214,7 +210,7 @@ function love.keypressed(key)
                 game.state.pre_game = PRE_GAME_STATE.load_game
             elseif choice == 3 then
                 game.state.pre_game = PRE_GAME_STATE.config
-                graphics.draw_screen()
+                console.draw()
             elseif choice == 4 then
                 game.state.pre_game = PRE_GAME_STATE.exit
             end
@@ -224,13 +220,12 @@ function love.keypressed(key)
                 table.insert(keys, k)
             end 
             if choice == table.maxn(keys) + 1 then
-                    save_config()
-                    game.state.pre_game = PRE_GAME_STATE.main
-                    graphics.draw_screen()
-                else
-                    config[keys[choice]] = not config[keys[choice]]
-                end
-                graphics.draw_screen()
+                save_config()
+                game.state.pre_game = PRE_GAME_STATE.main
+            else
+                config[keys[choice]] = not config[keys[choice]]
+            end
+            console.draw()
         elseif game.state.pre_game == PRE_GAME_STATE.new_game then
         elseif game.state.pre_game == PRE_GAME_STATE.load_game then
         elseif game.state.pre_game == PRE_GAME_STATE.exit then
@@ -264,22 +259,22 @@ function love.keypressed(key)
             elseif key == "l" then
                 game.state.playing = PLAYING_STATE.waiting
                 draw_visible_list = not draw_visible_list
-                graphics.draw_screen()
+                console.draw()
             elseif key == "x" then
                 game.state.playing = PLAYING_STATE.waiting
                 draw_tutorial = not draw_tutorial
-                graphics.draw_screen()
+                console.draw()
             elseif key == "escape" then
                 game.state.base = STATE.paused
             else
                 game.state.playing = PLAYING_STATE.waiting
             end
-            graphics.draw_screen()
+            console.draw()
         elseif game.state.playing == PLAYING_STATE.casting then
             if key == "c" then
                 game.state.playing = PLAYING_STATE.active
                 if aimable_spell then
-                    aimable_spell()
+                    aimable_spell.func(aimable_spell.item)
                 end
             else
                 if key == "left" or key == "kp4" then
@@ -292,7 +287,7 @@ function love.keypressed(key)
                     direction = DIRECTIONS.down
                 end
             end
-            graphics.draw_screen()
+            console.draw()
         elseif game.state.playing == PLAYING_STATE.dead then
 
         end
@@ -316,22 +311,22 @@ function love.keypressed(key)
                 game.player.character.fighter.base_power = game.player.character.fighter.base_power + 1
                 game.console.print("You gain 1 Power!", color_yellow)
                 game.player.character.fighter.hp = game.player.character.fighter:max_hp()     
-                graphics.draw_screen() 
+                console.draw()
             elseif table.index_of(ALPHABET, key) == 2 then
                 game.player.character.fighter.base_defense = game.player.character.fighter.base_defense + 1
                 game.console.print("You gain 1 Defense!", color_yellow)
                 game.player.character.fighter.hp = game.player.character.fighter:max_hp()     
-                graphics.draw_screen() 
+                console.draw()
             elseif table.index_of(ALPHABET, key) == 3 then
                 game.player.character.fighter.base_max_hp = game.player.character.fighter.base_max_hp + 5
                 game.console.print("You gain 5 HP!", color_yellow)
                 game.player.character.fighter.hp = game.player.character.fighter:max_hp()     
-                graphics.draw_screen() 
+                console.draw()
             else
                 game.state.base = STATE.menu
             end
         end
-        graphics.draw_screen()
+        console.draw()
     elseif game.state.base == STATE.paused then
         game.state.base = STATE.playing
         if key == "escape" then
@@ -345,26 +340,9 @@ function love.keypressed(key)
             game.state.base = STATE.pre_game
         elseif game.state.cutscene == CUTSCENE_STATE.dead then
             if key == "r" then
-                game.new_game()
+                game.new_game(get_class_name(1))
             end
         end
-    end
-end
-
-function graphics.draw_screen()
-    --draw screen when moving
-    if love.graphics and love.graphics.isActive() then
-        love.graphics.clear(love.graphics.getBackgroundColor())
-        love.graphics.origin()
-        if love.draw then love.draw() end
-        love.graphics.present()
-    end
-end
-
-function graphics.set_fullscreen(toggle)
-    if toggle then
-        love.window.setFullscreen(true)
-        SCALE = math.round(love.graphics.getHeight() / SCREEN_HEIGHT)
     end
 end
 
@@ -395,9 +373,9 @@ function map_draw()
     for x, arr in pairs(game.map.tilemap) do
         for y, til in pairs(arr) do
             if til.blocked then
-                graphics.rect_draw("fill", x, y, 1, 1, WALL_COLOR)
+                console.drawRect("fill", x, y, 1, 1, WALL_COLOR)
             else
-                graphics.rect_draw("fill", x, y, 1, 1, FLOOR_COLOR)
+                console.drawRect("fill", x, y, 1, 1, FLOOR_COLOR)
             end
         end
     end
@@ -407,27 +385,27 @@ end
 function fog_of_war()
     for x,arr in pairs(game.map.tilemap) do
         for y, til in pairs(arr) do
-            graphics.rect_draw("fill", x, y, 1, 1, til.visibility)
+            console.drawRect("fill", x, y, 1, 1, til.visibility)
         end
     end
 end
 
 function UI_draw()
     --level
-    graphics.text_draw("LvL " .. game.player.level, 1, SCREEN_HEIGHT - 6, colors.white, 0, 0)
+    console.drawText("LvL " .. game.player.level, 1, console.height - 6, colors.white, 0, 0)
     
     --HP
-    graphics.progress_bar_draw(1, STAT_DRAW_Y, 20, "HP", game.player.character.fighter.hp, game.player.character.fighter:max_hp(), colors.light_green, colors.red)
+    console.drawProgressBar(1, STAT_DRAW_Y, 20, "HP", game.player.character.fighter.hp, game.player.character.fighter:max_hp(), colors.light_green, colors.red)
 
     --xp
-    graphics.progress_bar_draw(1,  SCREEN_HEIGHT - 5, 12, "EXP", game.player.character.fighter.xp, (LEVEL_UP_BASE + game.player.level * LEVEL_UP_FACTOR), colors.dark_yellow, colors.grey_5)
+    console.drawProgressBar(1,  console.height - 5, 12, "EXP", game.player.character.fighter.xp, (LEVEL_UP_BASE + game.player.level * LEVEL_UP_FACTOR), colors.dark_yellow, colors.grey_5)
 
     --Attributes
-    graphics.text_draw("PWR:" .. game.player.character.fighter:power(), 1, SCREEN_HEIGHT - 3, colors.white, 0, 0)
-    graphics.text_draw("DEF:" .. game.player.character.fighter:defense(), 1, SCREEN_HEIGHT - 2, colors.white, 0, 0)
+    console.drawText("PWR:" .. game.player.character.fighter:power(), 1, console.height - 3, colors.white, 0, 0)
+    console.drawText("DEF:" .. game.player.character.fighter:defense(), 1, console.height - 2, colors.white, 0, 0)
     
     --Dungeon level
-    graphics.text_draw("Floor " .. game.map.level, SCREEN_WIDTH - 10, STAT_DRAW_Y, colors.white, 0, 0)
+    console.drawText("Floor " .. game.map.level, console.width - 10, STAT_DRAW_Y, colors.white, 0, 0)
 
     --console
     console_draw(15)
@@ -442,12 +420,12 @@ function console_draw(x)
         max = 5
     end
     for i=1, max do
-        graphics.text_draw(game.console.log[count + 1 - i][1], x, SCREEN_HEIGHT - i - 1, game.console.log[count + 1 - i][2] or nil, 0, 0)
+        console.drawText(game.console.log[count + 1 - i][1], x, console.height - i - 1, game.console.log[count + 1 - i][2] or nil, 0, 0)
     end
 end
 
 function aim_draw()
-    graphics.text_draw("*", game.player.character.x + direction.dx, game.player.character.y + direction.dy, colors.yellow, 0, 0)
+    console.drawText("*", game.player.character.x + direction.dx, game.player.character.y + direction.dy, colors.yellow, 0, 0)
 end
 
 function list_visible_objects()
@@ -457,7 +435,7 @@ function list_visible_objects()
             table.insert(visobj, {text = "[" .. v.char .. "] " .. v.name, color=v.color})
         end
     end
-    graphics.window("you see:", visobj, SCREEN_WIDTH - 40, 5, 35, table.maxn(visobj) + 5)
+    console.drawWindow("you see:", visobj, console.width - 40, 5, 35, table.maxn(visobj) + 5)
 end
 
 function list_tutorial()
@@ -474,7 +452,7 @@ function list_tutorial()
     table.insert(tutorial, 19, {text="Press ESC to save and exit.", color=color_white})
     table.insert(tutorial, 21, {text="Reach floor 10 and defeat all the monsters there to win!", color=color_white})
     table.insert(tutorial, 35, {text="Press the X to close or open this tutorial.", color=color_white})
-    graphics.window("TUTORIAL", tutorial, 3, 3, SCREEN_WIDTH - 6, SCREEN_HEIGHT - 10)
+    console.drawWindow("TUTORIAL", tutorial, 3, 3, console.width - 6, console.height - 10)
 end
 
 function inventory_menu(header)
@@ -490,11 +468,11 @@ function inventory_menu(header)
             table.insert(options, text)
         end
     end
-    graphics.menu(header, options, INVENTORY_WIDTH)
+    console.drawMenu(header, options, INVENTORY_WIDTH)
 end
 
 function main_menu()
-    graphics.menu("TOMB OF KING LOVE by Sternold", {"New Game", "Continue", "Configuration", "Quit"}, 32)
+    console.drawMenu("TOMB OF KING LOVE by Sternold", {"New Game", "Continue", "Configuration", "Quit"}, 32)
 end
 
 function config_menu()
@@ -509,15 +487,15 @@ function config_menu()
         table.insert(options, k .. " = " .. boolstring)
     end
         table.insert(options, "Back")
-     graphics.menu("Configuration", options, 32)
+     console.drawMenu("Configuration", options, 32)
 end
 
 function level_up_menu()
-    graphics.menu("What have you trained?", {"My Power", "My Defense", "My Courage"}, 32)
+    console.drawMenu("What have you trained?", {"My Power", "My Defense", "My Courage"}, 32)
 end
 
 function game_over(text)
-        graphics.rect_draw("fill", 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, {0,0,0,100})
+        console.drawRect("fill", 0, 0, console.width, console.height, {0,0,0,100})
         game.console.print(text, colors.yellow)
-        graphics.draw(graphics.newText(graphics.getFont(), {colors.white, text}), ((math.round(SCREEN_WIDTH / 2)) - 10) * SCALE, (math.round(SCREEN_HEIGHT / 2)) * SCALE)
+        console.drawText(text, console.centerText(0, console.width, text), (math.round(console.height / 2)), colors.white)
 end
