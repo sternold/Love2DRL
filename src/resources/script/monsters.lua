@@ -1,4 +1,16 @@
-monster_factory = {
+local monster_factory = {
+    chances = function()
+        monster_chances = {
+            orc = 50,
+            goblin = game.map.from_dungeon_level({{2, 25}, {4, 10}, {6, 0}}),
+            kobold = game.map.from_dungeon_level({{1, 15}, {3, 30}, {5, 0}}),
+            giant_rat = game.map.from_dungeon_level({{2, 25}, {4, 15}, {6, 0}}),
+            vampire = game.map.from_dungeon_level({{9, 1}}),
+            troll = game.map.from_dungeon_level({{3, 15}, {5, 30}, {7, 60}}),
+            ogre = game.map.from_dungeon_level({{4, 10}, {6, 20}}),
+        }
+        return monster_chances
+    end,
     orc = function(x, y)
                 local fighter_component = Fighter(20, 0, 2, 35, monster_death)
                 local ai_component = BasicMonster()
@@ -37,18 +49,5 @@ monster_factory = {
                 return GameObject(x, y, "O", "Ogre", colors.grey_7, true, fighter_component, ai_component)
     end
 }
-
-function monster_factory.chances()
-    monster_chances = {
-        orc = 50,
-        goblin = game.map.from_dungeon_level({{2, 25}, {4, 10}, {6, 0}}),
-        kobold = game.map.from_dungeon_level({{1, 15}, {3, 30}, {5, 0}}),
-        giant_rat = game.map.from_dungeon_level({{2, 25}, {4, 15}, {6, 0}}),
-        vampire = game.map.from_dungeon_level({{9, 1}}),
-        troll = game.map.from_dungeon_level({{3, 15}, {5, 30}, {7, 60}}),
-        ogre = game.map.from_dungeon_level({{4, 10}, {6, 20}}),
-    }
-    return monster_chances
-end
 
 return monster_factory

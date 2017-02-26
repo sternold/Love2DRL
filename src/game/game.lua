@@ -6,7 +6,6 @@ game.console = {}
 game.state = {}
 
 --variables
-objectcolors = {}
 aimable_spell = nil
 direction = DIRECTIONS.none
 
@@ -31,15 +30,14 @@ function game_reg()
     bitser.register("gam_bqg", game.player.move_or_attack)
     bitser.register("gam_brg", game.player.visible_range)
     bitser.register("gam_bsg", game.player.check_level_up)
+    bitser.register("gam_upd", game.update)
 end
 
 --init
 function game.new_game(class)
-    local class_factory = require("resources/classes")
+    local class_factory = require("resources/script/classes")
     console.setFullscreen(config.fullscreen)
-    
-    game.state.base = STATE.playing
-    game.state.playing = PLAYING_STATE.waiting   
+     
     game.player.inventory = {}
     game.console.log = {}
     game.map.level = 1
@@ -66,6 +64,20 @@ function game.next_level()
     game.player.character.fighter:heal(math.round(game.player.character.fighter:max_hp() / 2))
     game.player.visible_range(PLAYER_VISIBILITY_RANGE)
     console.draw()
+end
+
+function game.update()
+    for key,value in pairs(game.map.objects) do 
+    if value.ai then
+        for k, v in pairs(value.fighter.invocations) do
+            v:invoke()
+        end
+        value.ai:take_turn()
+        end 
+    end
+    for k, v in pairs(game.player.character.fighter.invocations) do
+        v:invoke()
+    end
 end
 
 --deprecated
@@ -188,8 +200,8 @@ function game.map.create_v_tunnel(y1, y2, x)
 end
 
 function game.map.place_objects(room)
-    local monster_factory = require("resources/monsters")
-    local item_factory = require("resources/items")
+    local monster_factory = require("resources/script/monsters")
+    local item_factory = require("resources/script/items")
     
     local max_monsters = game.map.from_dungeon_level({{1, 2}, {4, 3}, {6, 5}})
     local max_items = game.map.from_dungeon_level({{1, 1}, {4, 2}})

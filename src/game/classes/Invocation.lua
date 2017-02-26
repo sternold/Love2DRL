@@ -1,9 +1,23 @@
-
 function inv_reg()
     bitser.register("inv_conf", invoke_confusion)
     bitser.register("inv_str", invoke_strength)
     bitser.register("inv_regen", invoke_regen)
     bitser.register("inv_vamp", invoke_vampirism)
+end
+
+Invocation = class('Invocation')
+function Invocation:initialize(duration, invoke_function)
+    self.duration = duration
+    self.timer = 0
+    self.invoke_function = invoke_function
+end
+
+function Invocation:invoke()
+    self.invoke_function(self, true)
+    self.timer = self.timer + 1
+    if(self.timer >= self.duration) then
+        self.invoke_function(self, false)
+    end
 end
 
 function add_invocation(target, duration, invoke_function)

@@ -26,6 +26,7 @@ This is a roguelike created following [this tutorial.](http://www.roguebasin.com
 * [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P) by CodeMan38
 * [Improved Shadowcasting](http://www.roguebasin.com/index.php?title=Improved_Shadowcasting_in_Java) by Eben Howard
 * [Bitser](https://github.com/gvx/bitser) by Robin Wellner
+* [ScreenManager](https://github.com/rm-code/screenmanager) by Robert Machmer
 
 ## Developed By
 

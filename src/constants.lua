@@ -31,36 +31,6 @@ SLOTS = {
     head = 10,
     back = 11
 }
-STATE = {
-    pre_game=1,
-    playing=2,
-    menu=3,
-    paused=4,
-    cutscene=5
-}
-PRE_GAME_STATE = {
-    main=1,
-    config=2,
-    new_game=3,
-    load_game=4,
-    exit=5
-}
-PLAYING_STATE = {
-    active=1,
-    waiting=2,
-    casting=3,
-    dead=4
-}
-MENU_STATE = {
-    inventory=1,
-    dropping=2,
-    level_up=3
-}
-CUTSCENE_STATE = {
-    begin=1,
-    won=2,
-    dead=3
-}
 
 --system
 MAP_WIDTH = 78
