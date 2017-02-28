@@ -60,8 +60,8 @@ function dungeon_generator.create_rooms(map)
 end
 
 function dungeon_generator.create_room(map, room)
-    for x=room.x1+1, room.x2 do
-        for y=room.y1+1, room.y2 do
+    for x=room.x1+1, room.x2-1 do
+        for y=room.y1+1, room.y2-1 do
             map.tiles[x][y].blocked = false
             map.tiles[x][y].block_sight = false
         end

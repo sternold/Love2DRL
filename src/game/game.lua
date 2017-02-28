@@ -59,6 +59,10 @@ function game.update()
     for k, v in pairs(data.player.character.fighter.invocations) do
         v:invoke()
     end
+
+    if data.map.floor == END_FLOOR and data.map.monster_count <= 0 then
+        screenmanager.push("gameover", "A WINNER IS YOU!")
+    end
 end
 
 function game.next_level()
@@ -98,7 +102,7 @@ function fov_cast_light(row, cstart, cend, xx, xy, yx, yy, range)
         local deltay = distance * -1
         for deltax = distance * -1, 0 do
             local currentx = startx + deltax * xx + deltay * xy
-            local currenty = starty + deltax * yx + deltay * yy
+            local currenty = starty + deltax * yx + deltay * yy 
             local leftslope = (deltax - .5) / (deltay +.5)
             local rightslope = (deltax + .5) / (deltay - .5)
 

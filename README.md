@@ -16,10 +16,17 @@ This is a roguelike created following [this tutorial.](http://www.roguebasin.com
 * Press ESC to save and exit.
 * Reach floor 10 and defeat all the monsters there to win!
 
+## Known Bugs
+* None at the moment! 
+
 ## Wishlist
-* fix FOV: FOV has minor issues where it doesn't draw the outermost walls.
 * Boss mechanic
-* Class Selection
+* Scent map based AI movement
+* A* Pathfinding Algorithm
+* NPC Inventories
+* Spells & Mana w/out scrolls
+* Ranged weapons
+* Enchanted armor
 
 ## Libraries Used
 * [middleclass](https://github.com/kikito/middleclass) by Kikito
