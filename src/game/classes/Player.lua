@@ -7,6 +7,7 @@ function Player:initialize(charclass, character)
     self.inventory = {}
     self.base_xp = 200
     self.rate_xp = 150
+    self.scent = 2
 end
 
 function Player:move_or_attack(dx, dy)

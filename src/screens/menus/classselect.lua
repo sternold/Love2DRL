@@ -15,7 +15,7 @@ function classselect.new()
 
     function self:keypressed(key)
         local choice = table.index_of(ALPHABET, key)
-        if choice > table.count(classes) then
+        if not choice or choice > table.count(classes) then
             return
         end
         game.new_game(table.get_key(classes, choice))

@@ -17,13 +17,27 @@ function Map:initialize(w, h, floor)
     self.wall_color = colors.dark_orange
 end
 
-function Map:draw()
-    for x, arr in pairs(data.map.tiles) do
-        for y, til in pairs(arr) do
-            if til.blocked then
-                console.drawRect("fill", x, y, 1, 1, self.wall_color)
-            else
-                console.drawRect("fill", x, y, 1, 1, self.floor_color)
+function Map:draw(cx, cy, cw, ch)
+    for x=cx+1, cx+cw do
+        if self.tiles[x] then
+            for y=cy+1, cy+ch do
+                if self.tiles[x][y] and self.tiles[x][y].blocked then
+                    console.drawRect("fill", x-cx, y-cy, 1, 1, self.wall_color)
+                else
+                    console.drawRect("fill", x-cx, y-cy, 1, 1, self.floor_color)
+                end
+            end
+        end
+    end
+end
+
+function Map:draw_fog(cx, cy, cw, ch)
+    for x=cx+1, cx+cw do
+        if self.tiles[x] then
+            for y=cy+1, cy+ch do
+                if self.tiles[x][y] then
+                    console.drawRect("fill", x-cx, y-cy, 1, 1, self.tiles[x][y].visibility)
+                end
             end
         end
     end

@@ -1,6 +1,6 @@
 local dungeon_generator = {}
-MAP_WIDTH = 78
-MAP_HEIGHT = 43
+MAP_WIDTH = 50
+MAP_HEIGHT = 50
 MAX_ROOMS = 30
 ROOM_MIN_SIZE = 6 
 ROOM_MAX_SIZE = 10

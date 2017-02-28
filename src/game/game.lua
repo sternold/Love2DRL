@@ -20,12 +20,14 @@ function game.new_game(class)
     local map, coords = dun_gen.generate(1) 
     data.map = map
     data.player = class_factory[class](coords.x, coords.y)
+    data.camera = camera.init(78, 43)
     data.player:visible_range()
     for k,v in pairs(data.player.inventory) do
         if v.equipment then
             v.equipment:equip()
         end
     end
+
     console.draw()
 end
 
@@ -79,8 +81,7 @@ end
 
 --util
 function fov_cast_light(row, cstart, cend, xx, xy, yx, yy, range)
-    local startx = data.player.character.x
-    local starty = data.player.character.y
+    local startx, starty = data.player.character.x, data.player.character.y
     local radius = range
     local start = cstart
     

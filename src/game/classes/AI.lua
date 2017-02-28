@@ -20,6 +20,6 @@ function ConfusedMonster:initialize()
 end
 
 function ConfusedMonster:take_turn()
-    game.console.print("The " .. self.owner.name .. " stumbles around!", colors.orange)
+    game.print("The " .. self.owner.name .. " stumbles around!", colors.orange)
     self.owner:move(love.math.random(-1, 1), love.math.random(-1, 1))
 end

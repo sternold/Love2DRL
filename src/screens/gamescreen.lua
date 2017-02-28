@@ -55,20 +55,13 @@ function gamescreen.new()
     end
 
     function world_draw()
-        data.map:draw()
-        fog_of_war()
+        camera.move(data.camera, data.map, data.player.character.x, data.player.character.y)
+        data.map:draw(data.camera.x, data.camera.y, data.camera.width, data.camera.height)
+        data.map:draw_fog(data.camera.x, data.camera.y, data.camera.width, data.camera.height)
         for k,v in pairs(data.map.objects) do
             v:draw()
         end
-        data.player.character:draw()
-    end
-
-    function fog_of_war()
-        for x,arr in pairs(data.map.tiles) do
-            for y, til in pairs(arr) do
-                console.drawRect("fill", x, y, 1, 1, til.visibility)
-            end
-        end
+        data.player.character:draw()  
     end
 
     function UI_draw()

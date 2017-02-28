@@ -38,7 +38,8 @@ end
 
 function GameObject:draw()
     if data.map.tiles[self.x][self.y].visibility == special_colors.fov_visible then
-        console.drawText(self.char, self.x, self.y, self.color)
+        local x, y = camera.coordinates(data.camera, self.x, self.y)
+        console.drawText(self.char, x, y, self.color)
     end
 end
 
