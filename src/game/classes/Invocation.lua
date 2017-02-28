@@ -69,6 +69,8 @@ function invoke_vampirism(self, state)
         self.owner.base_power = 30
         self.owner.base_max_hp = 5
         self.owner.hp = 5
+        self.owner.owner.char = "w"
+        self.owner.owner.color = colors.white
         if self.weakness then
             self.owner.death_function(self.owner)
         end

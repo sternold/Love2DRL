@@ -87,7 +87,7 @@ function cast_regen(self)
 end
 
 function cast_lightning(self)
-    local monster = data.map:closest_enemy(self.var.range)
+    local monster = data.map:closest_enemy(data.player.character, self.var.range)
     if monster == nil then
         game.print("No enemy in range.")
         return "cancelled"
@@ -119,7 +119,7 @@ function cast_fireball(self)
 end
 
 function cast_confusion(self)
-    local monster = data.map:closest_enemy(self.var.range)
+    local monster = data.map:closest_enemy(data.player.character, self.var.range)
     if monster == nil then
         game.print("No enemy in range.")
         return "cancelled"
@@ -135,7 +135,7 @@ function cast_strength(self)
 end
 
 function cast_lightning_storm(self)
-    local gobjects = data.map:gameobjects_in_range(data.player.character.x, data.player.character.y, self.var.range)
+    local gobjects = data.map:gameobjects_in_range(data.player.character, self.var.range)
     if table.maxn(gobjects) == 0 then
         game.print(table.maxn(gobjects))
         game.print("No enemy in range.")

@@ -2,8 +2,8 @@ local dungeon_generator = {}
 
 function dungeon_generator.generate(floor)
     dungeon_level = floor
-    local map_width = dungeon_generator.from_dungeon_level({{1, 50}})
-    local map_height = dungeon_generator.from_dungeon_level({{1, 50}})
+    local map_width = dungeon_generator.from_dungeon_level({{1, 50}, {4, 60}, {8, 75}, {10, 30}})
+    local map_height = dungeon_generator.from_dungeon_level({{1, 50}, {4, 60}, {8, 75}, {10, 30}})
     local map = Map:new(map_width, map_height, floor)
     local starting_coords = dungeon_generator.create_rooms(map)   
     return map, starting_coords
@@ -12,8 +12,8 @@ end
 function dungeon_generator.create_rooms(map)
     local rooms = {}
     local max_rooms = (map.width * map.height) / 100
-    local room_min_size = dungeon_generator.from_dungeon_level({{1, 6}})
-    local room_max_size = dungeon_generator.from_dungeon_level({{1, 10}})
+    local room_min_size = dungeon_generator.from_dungeon_level({{1, 6}, {5, 8}, {10, 14}})
+    local room_max_size = dungeon_generator.from_dungeon_level({{1, 10}, {5, 14}, {10, 20}})
     local w = 0
     local h = 0
     local x = 0
@@ -132,7 +132,7 @@ function dungeon_generator.stairs(map, x, y)
         sx = sx + dx
         sy = sy + dy
     end
-    if floor == END_FLOOR then
+    if map.floor == END_FLOOR then
         map.stairs = GameObject(1, 1, "<", "stairs", colors.white)
     else
         map.stairs = GameObject(sx, sy, "<", "stairs", colors.white)

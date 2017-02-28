@@ -37,6 +37,7 @@ function inventory.new()
                 data.player.inventory[table.index_of(ALPHABET, key)].item:drop();
             end
         end
+        console.draw()
     end
 
     return self
