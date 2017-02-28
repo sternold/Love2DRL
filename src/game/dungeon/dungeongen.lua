@@ -1,28 +1,27 @@
 local dungeon_generator = {}
-MAP_WIDTH = 50
-MAP_HEIGHT = 50
-MAX_ROOMS = 30
-ROOM_MIN_SIZE = 6 
-ROOM_MAX_SIZE = 10
-END_FLOOR = 10
 
 function dungeon_generator.generate(floor)
     dungeon_level = floor
-    local map = Map:new(MAP_WIDTH, MAP_HEIGHT, floor)
+    local map_width = dungeon_generator.from_dungeon_level({{1, 50}})
+    local map_height = dungeon_generator.from_dungeon_level({{1, 50}})
+    local map = Map:new(map_width, map_height, floor)
     local starting_coords = dungeon_generator.create_rooms(map)   
     return map, starting_coords
 end
 
 function dungeon_generator.create_rooms(map)
     local rooms = {}
+    local max_rooms = (map.width * map.height) / 100
+    local room_min_size = dungeon_generator.from_dungeon_level({{1, 6}})
+    local room_max_size = dungeon_generator.from_dungeon_level({{1, 10}})
     local w = 0
     local h = 0
     local x = 0
     local y = 0
-    for r=0, MAX_ROOMS do
+    for r=0, max_rooms do
         --random width and height
-        w = love.math.random(ROOM_MIN_SIZE, ROOM_MAX_SIZE)
-        h = love.math.random(ROOM_MIN_SIZE, ROOM_MAX_SIZE)
+        w = love.math.random(room_min_size, room_max_size)
+        h = love.math.random(room_min_size, room_max_size)
         --random position without going out of the boundaries of the map
         x = love.math.random(1, map.width - w - 1)
         y = love.math.random(1, map.height - h - 1)
@@ -142,12 +141,13 @@ function dungeon_generator.stairs(map, x, y)
 end
 
 function dungeon_generator.from_dungeon_level(table)
+    result = 0
     for k, arr in pairs(table) do
         if dungeon_level >= arr[1] then
-            return arr[2]
+            result = arr[2]
         end
     end
-    return 0
+    return result
 end
 
 return dungeon_generator

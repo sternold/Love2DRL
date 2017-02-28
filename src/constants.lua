@@ -38,3 +38,4 @@ CONFIG_FILE = "config.rl"
 
 --game
 CONFIG_DEFAULT = {fullscreen=false, tutorial=true}
+END_FLOOR = 10
