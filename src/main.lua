@@ -7,18 +7,21 @@ require("libraries/util")
 require("libraries/colors")
 require("game/dungeon/classes/Tile")
 require("game/dungeon/classes/Rect")
+require("game/dungeon/classes/Map")
 require("game/classes/GameObject")
 require("game/classes/Item")
 require("game/classes/AI")
 require("game/classes/Fighter")
 require("game/classes/Equipment")
 require("game/classes/Invocation")
+require("game/classes/Player")
 require("constants")
-require("game/game")
 
-require("resources/script/classes")
+game = require("game/game")
 
 function register()
+    bitser.registerClass(Map)
+    bitser.registerClass(Player)
     bitser.registerClass(Tile)
     bitser.registerClass(Rect)
     bitser.registerClass(GameObject)
@@ -28,9 +31,8 @@ function register()
     bitser.registerClass(Item)
     bitser.registerClass(Equipment)
     bitser.registerClass(Invocation)
-    game_reg()
     inv_reg()
-    obj_reg()
+    fit_reg()
     item_reg()
 end
 
@@ -103,12 +105,13 @@ function love.load()
         inventory = require("screens/menus/inventory"),
         levelup = require("screens/menus/levelup"),
         pause = require("screens/menus/pausemenu"),
+        classselect = require("screens/menus/classselect"),
         tutorial = require("screens/overlays/tutorial"),
         gameover = require("screens/overlays/gameover"),
         casting = require("screens/overlays/casting")
         
     }
-    screenmanager.init(screens, "mainmenu")
+    screenmanager.init(screens, "main")
     screenmanager.registerCallbacks()
     screenmanager.push("mainmenu")
 end

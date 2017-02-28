@@ -1,28 +1,28 @@
 local item_factory = {
-            chances = function()
+            chances = function(generator)
                 item_chances = {
                     pot_heal = 15,
                     fd_bread = 10,
                     fd_apple = 5,
-                    fd_garlic_bread = game.map.from_dungeon_level({{2, 10}}),
-                    fd_stew = game.map.from_dungeon_level({{3, 15}}),
-                    pot_regen = game.map.from_dungeon_level({{4, 5}}),
-                    scr_lightning = game.map.from_dungeon_level({{5, 10}}),
-                    scr_fireball =  game.map.from_dungeon_level({{2, 10}}),
-                    scr_confuse =   game.map.from_dungeon_level({{3, 5}}),
-                    scr_strength =   game.map.from_dungeon_level({{4, 5}}),
-                    scr_lightning_storm =   game.map.from_dungeon_level({{7, 5}}),
-                    wpn_s_sword =   game.map.from_dungeon_level({{1, 5}, {5, 0}}),
-                    wpn_l_sword =   game.map.from_dungeon_level({{4, 5}}),
-                    wpn_g_sword =   game.map.from_dungeon_level({{7, 5}}),
-                    wpn_rapier =   game.map.from_dungeon_level({{3, 1}}),
-                    arm_shield =   game.map.from_dungeon_level({{1, 5}}),
-                    arm_l_armor =   game.map.from_dungeon_level({{1, 7}, {5,0}}),
-                    arm_c_armor =   game.map.from_dungeon_level({{4, 7}}),
-                    arm_p_armor =   game.map.from_dungeon_level({{7, 7}}),
-                    acc_scarf =   game.map.from_dungeon_level({{2, 3}}),
-                    art_stone_mask = game.map.from_dungeon_level({{8, 1}}),
-                    wpn_silver_dagger = game.map.from_dungeon_level({{6, 2}})
+                    fd_garlic_bread = generator.from_dungeon_level({{2, 10}}),
+                    fd_stew = generator.from_dungeon_level({{3, 15}}),
+                    pot_regen = generator.from_dungeon_level({{4, 5}}),
+                    scr_lightning = generator.from_dungeon_level({{5, 10}}),
+                    scr_fireball =  generator.from_dungeon_level({{2, 10}}),
+                    scr_confuse =   generator.from_dungeon_level({{3, 5}}),
+                    scr_strength =   generator.from_dungeon_level({{4, 5}}),
+                    scr_lightning_storm =   generator.from_dungeon_level({{7, 5}}),
+                    wpn_s_sword =   generator.from_dungeon_level({{1, 5}, {5, 0}}),
+                    wpn_l_sword =   generator.from_dungeon_level({{4, 5}}),
+                    wpn_g_sword =   generator.from_dungeon_level({{7, 5}}),
+                    wpn_rapier =   generator.from_dungeon_level({{3, 1}}),
+                    arm_shield =   generator.from_dungeon_level({{1, 5}}),
+                    arm_l_armor =   generator.from_dungeon_level({{1, 7}, {5,0}}),
+                    arm_c_armor =   generator.from_dungeon_level({{4, 7}}),
+                    arm_p_armor =   generator.from_dungeon_level({{7, 7}}),
+                    acc_scarf =   generator.from_dungeon_level({{2, 3}}),
+                    art_stone_mask = generator.from_dungeon_level({{8, 1}}),
+                    wpn_silver_dagger = generator.from_dungeon_level({{6, 2}})
                 }
                 return item_chances
             end,     
@@ -79,7 +79,7 @@ local item_factory = {
             scr_strength = function(x, y)
                 local item_component = Item(cast_strength)
                 item_component.var.duration = 10
-                local item = GameObject(x, y, '#', "Scroll of Giant's Strength", colors.player, false, nil, nil, item_component)   
+                local item = GameObject(x, y, '#', "Scroll of Giant's Strength", colors.light_red, false, nil, nil, item_component)   
                 return item
                 end,
             scr_lightning = function(x, y)
@@ -147,7 +147,7 @@ local item_factory = {
                 return item
                 end,
             wpn_silver_dagger = function(x, y)
-                local equipment_component = Equipment('right hand', 2, 0, 0, nil, {type="attack", usage_function=use_silver_dagger})
+                local equipment_component = Equipment('right hand', 2, 0, 0, nil, {type="attack", usage_function=use_holy_weapon})
                 local item = GameObject(x, y, '-', 'silver dagger', colors.grey_5, false, nil, nil, nil, equipment_component)
                 return item
             end

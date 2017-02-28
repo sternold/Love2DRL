@@ -1,4 +1,11 @@
 # CHANGELOG
+
+# v 1.3
+* Refactored entire codebase _again_
+* Classes! You can now pick a class when you start a game (+Lovemancer, +Paladin)
+* A proper pause menu
+* Still a lot of bugs probably
+
 # v 1.2
 * Refactored entire codebase
 * Saving/loading is now dynamic, no more dropped variables
@@ -16,7 +23,7 @@
 * Added sound
 
 # v 1.0.0 RELEASE
-* Added a whole bunch of monster and items (goblins, kobolds, vampires, shields, rapiers and more!)
+* Added a whole bunch of monster and items (+goblins, +kobolds, +vampires, +shields, +rapiers and +more!)
 * Added a vampirism mechanic
 * Fixed most bugs!
 
@@ -40,7 +47,7 @@
 # v 0.9
 * minor bug fixed where using an item with the D key would open the Drop menu
 * Equipment system added
-* Equipment added (Sword, Chainmail, Scarf of Courage)
+* Equipment added (+Sword, +Chainmail, +Scarf of Courage)
 * Wincondition added (reach and defeat floor 10)
 
 # v 0.8.2
@@ -54,7 +61,7 @@
 
 # v 0.7
 * Bugfixes
-* Added spells (Giant's Strength, Lightning Storm)
+* Added spells (+Giant's Strength, +Lightning Storm)
 * Added restart button (R)
 * Randomized floor tables added
 
@@ -68,16 +75,16 @@
 
 # V 0.4
 * Added main menu
-* Added aimable spells (Fireball)
+* Added aimable spells (+Fireball)
 * Added a drop mechanic
 
 # V 0.3
-* Added spells (Lightning, Confusion)
+* Added spells (+Lightning, +Confusion)
 
 # V 0.2
-* Added items (Healing Potion)
+* Added items (+Healing Potion)
 * Added an inventory
 
 # V 0.1
 * Initial version
-* Added monsters (Orc, Troll)
+* Added monsters (+Orc, +Troll)

@@ -30,14 +30,14 @@ function GameObject:initialize(x, y, char, name, color, blocks, fighter, ai, ite
 end
 
 function GameObject:move(dx, dy)
-    if not game.map.is_blocked(self.x + dx, self.y + dy) then
+    if not data.map:is_blocked(self.x + dx, self.y + dy) then
         self.x = self.x + dx
         self.y = self.y + dy
     end
 end
 
 function GameObject:draw()
-    if game.map.tilemap[self.x][self.y].visibility == special_colors.fov_visible then
+    if data.map.tiles[self.x][self.y].visibility == special_colors.fov_visible then
         console.drawText(self.char, self.x, self.y, self.color)
     end
 end

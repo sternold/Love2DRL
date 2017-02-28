@@ -14,10 +14,10 @@ function inventory.new()
 
     function self:draw()
     local options = {}
-    if table.maxn(game.player.inventory) == 0 then
+    if table.maxn(data.player.inventory) == 0 then
         table.insert(options, "Inventory is empty.")
     else
-        for key, value in pairs(game.player.inventory) do
+        for key, value in pairs(data.player.inventory) do
             local text = value.name
             if value.equipment ~= nil and value.equipment.is_equipped then
                 text = text .. " (on " .. value.equipment.slot .. ")"
@@ -25,16 +25,16 @@ function inventory.new()
             table.insert(options, text)
         end
     end
-    console.drawMenu(header, options, INVENTORY_WIDTH)
+    console.drawMenu(header, options, 60)
     end
 
     function self:keypressed(key)
         screenmanager.pop()
-        if game.player.inventory[table.index_of(ALPHABET, key)] then
+        if data.player.inventory[table.index_of(ALPHABET, key)] then
             if mode == "use" then
-                game.player.inventory[table.index_of(ALPHABET, key)].item:use();
+                data.player.inventory[table.index_of(ALPHABET, key)].item:use();
             elseif mode == "drop" then
-                game.player.inventory[table.index_of(ALPHABET, key)].item:drop();
+                data.player.inventory[table.index_of(ALPHABET, key)].item:drop();
             end
         end
     end

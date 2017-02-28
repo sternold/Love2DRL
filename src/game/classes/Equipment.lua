@@ -23,7 +23,7 @@ function Equipment:equip()
         old_equipment:dequip()
     end
     self.is_equipped = true
-    game.console.print("Equipped " .. self.owner.name .. " on " .. self.slot .. ".", color_blue)
+    game.print("Equipped " .. self.owner.name .. " on " .. self.slot .. ".", colors.blue)
     if self.equip_function then
         self.equip_function()
     end
@@ -31,11 +31,11 @@ end
 
 function Equipment:dequip()
     self.is_equipped = false
-    game.console.print("Dequipped " .. self.owner.name .. " on " .. self.slot .. ".", color_yellow)
+    game.print("Dequipped " .. self.owner.name .. " on " .. self.slot .. ".", colors.yellow)
 end
 
 function get_equipped_in_slot(slot)
-    for k, obj in pairs(game.player.inventory) do
+    for k, obj in pairs(data.player.inventory) do
         if obj.equipment ~= nil and obj.equipment.slot == slot and obj.equipment.is_equipped then
             return obj.equipment
         end
@@ -44,9 +44,9 @@ function get_equipped_in_slot(slot)
 end
 
 function get_all_equipped(obj)
-    if obj == game.player.character then
+    if obj == data.player.character then
         local equipped = {}
-        for k,v in pairs(game.player.inventory) do
+        for k,v in pairs(data.player.inventory) do
             if v.equipment ~= nil and v.equipment.is_equipped then
                 table.insert(equipped, v)
             end

@@ -35,7 +35,7 @@ function invoke_confusion(self, state)
         new_ai.owner = self.owner.owner 
         self.owner.owner.ai = new_ai
     elseif not state then
-        game.console.print("The confusion has ended.", color_green)
+        game.print("The confusion has ended.", color_green)
         self.owner.owner.ai = self.old_ai
         table.remove(self.owner.invocations, table.index_of(self.owner.invocations, self))
     end
@@ -48,7 +48,7 @@ function invoke_strength(self, state)
         self.owner.base_power = new_pwr
         self.fired = true
     elseif not state then
-        game.console.print(invocation.owner.owner.name .. " no longer feels powerful.", color_player)
+        game.print(invocation.owner.owner.name .. " no longer feels powerful.", color_player)
         self.owner.base_power = self.old_pwr
         table.remove(invocation.owner.invocations, table.index_of(self.owner.invocations, self))
     end
@@ -57,7 +57,7 @@ end
 function invoke_regen(self, state)
     if state then
         self.owner:heal(5)
-        game.console.print(self.owner.owner.name .. " feels a little better!", color_player)
+        game.print(self.owner.owner.name .. " feels a little better!", color_player)
     elseif not state then
         table.remove(self.owner.invocations, table.index_of(self.owner.invocations, self))
     end

@@ -29,6 +29,16 @@ function table.index_of(t, object)
     return nil
 end
 
+function table.get_key(table, index)
+    count = 1
+    for k, v in pairs(table) do
+        if count == index then
+            return k
+        end
+        count = count + 1
+    end
+end
+
 function table.has_key(t, key)
     for k, v in pairs(t) do
         if key == k then

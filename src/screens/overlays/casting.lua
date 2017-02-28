@@ -5,13 +5,12 @@ function casting.new()
     local self = screen.new()
 
     function self:draw()
-        console.drawText("*", game.player.character.x + direction.dx, game.player.character.y + direction.dy, colors.yellow)
+        console.drawText("*", data.player.character.x + direction.dx, data.player.character.y + direction.dy, colors.yellow)
     end
 
     function self:keypressed(key)
         if key == "c" then
             aimable_spell.func(aimable_spell.item)
-            direction = DIRECTIONS.none
             screenmanager.pop()
         else
             if key == "left" or key == "kp4" then

@@ -32,30 +32,9 @@ SLOTS = {
     back = 11
 }
 
---system
-MAP_WIDTH = 78
-MAP_HEIGHT = 43
-
---screen
-STAT_DRAW_Y = 0
-INVENTORY_WIDTH = 60
-
 --io
 SAVE_FILE = "save.rl"
 CONFIG_FILE = "config.rl"
 
 --game
 CONFIG_DEFAULT = {fullscreen=false, tutorial=true}
-END_FLOOR = 10
-
----character
-LEVEL_UP_BASE = 200
-LEVEL_UP_FACTOR = 150
-PLAYER_VISIBILITY_RANGE = 10
-
---map
-ROOM_MAX_SIZE = 10
-ROOM_MIN_SIZE = 6
-MAX_ROOMS = 30
-FLOOR_COLOR = colors.grey_6
-WALL_COLOR = colors.dark_orange

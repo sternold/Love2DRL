@@ -8,7 +8,7 @@ function gameover.new()
 
     function self:init(t)
         text = t
-        game.console.print(text, colors.yellow)
+        game.print(text, colors.yellow)
     end
 
     function self:draw()
@@ -18,7 +18,7 @@ function gameover.new()
 
     function self:keypressed(key)
         if key == "r" then
-            game.new_game(get_class_name(1))
+            game.new_game(data.player.charclass)
             screenmanager.pop()
         end
         console.draw()

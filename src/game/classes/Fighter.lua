@@ -1,4 +1,4 @@
-function obj_reg()
+function fit_reg()
     bitser.register("obj_pld", player_death)
     bitser.register("obj_mod", monster_death)
 end
@@ -32,10 +32,10 @@ function Fighter:attack(target)
         end
     end
         if damage > 0 then
-            game.console.print(self.owner.name .. ' attacks ' .. target.name .. ' for ' .. damage .. ' hit points.')
+            game.print(self.owner.name .. ' attacks ' .. target.name .. ' for ' .. damage .. ' hit points.')
             target.fighter:take_damage(damage)
         else
-            game.console.print(self.owner.name .. ' attacks ' .. target.name .. ' but it has no effect!')
+            game.print(self.owner.name .. ' attacks ' .. target.name .. ' but it has no effect!')
         end
 end
 
@@ -77,14 +77,14 @@ function player_death(target)
 end
 
 function monster_death(target)
-    game.console.print(target.name .. ' is dead!', colors.dark_red)
-    game.player.character.fighter.xp = game.player.character.fighter.xp + target.fighter.xp
+    game.print(target.name .. ' is dead!', colors.dark_red)
+    data.player.character.fighter.xp = data.player.character.fighter.xp + target.fighter.xp
     target.char = '%'
     target.color = colors.dark_red
     target.blocks = false
     target.fighter = nil
     target.ai = nil
     target.name = 'remains of ' .. target.name
-    game.map.monster_count = game.map.monster_count - 1
-    game.player.check_level_up()
+    data.map.monster_count = data.map.monster_count - 1
+    data.player:check_level_up()
 end
