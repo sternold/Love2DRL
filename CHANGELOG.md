@@ -1,6 +1,6 @@
 # CHANGELOG
 
-# v 1.3
+# v 1.4
 * Minor bugfixes
 * Fixed a major bug where generation would pick the earliest value from the dungeon level table
 * Added a camera. Maps can now be bigger than their window
