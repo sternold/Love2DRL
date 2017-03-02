@@ -23,7 +23,7 @@ function Equipment:equip()
         old_equipment:dequip()
     end
     self.is_equipped = true
-    game.print("Equipped " .. self.owner.name .. " on " .. self.slot .. ".", colors.blue)
+    game.print("Equipped " .. self.owner.name .. " on " .. table.index_of(SLOTS, self.slot):gsub("_", " ") .. ".", colors.blue)
     if self.equip_function then
         self.equip_function()
     end
@@ -31,7 +31,7 @@ end
 
 function Equipment:dequip()
     self.is_equipped = false
-    game.print("Dequipped " .. self.owner.name .. " on " .. self.slot .. ".", colors.yellow)
+    game.print("Dequipped " .. self.owner.name .. " on " .. table.index_of(SLOTS, self.slot):gsub("_", " ") .. ".", colors.yellow)
 end
 
 function get_equipped_in_slot(slot)

@@ -4,11 +4,11 @@ local class_factory = {
         local character = GameObject(x, y, "@", "Warrior", colors.dark_yellow, true, fighter_component, nil)
         local player = Player("Warrior", character)
         --dagger
-        local equipment_component = Equipment('right hand', 1, 0, 0)
+        local equipment_component = Equipment(SLOTS.right_hand, 1, 0, 0)
         local item = GameObject(0, 0, '-', 'dagger', colors.grey_2, false, nil, nil, nil, equipment_component)
         table.insert(player.inventory, item)
         --cloak
-        local equipment_component = Equipment('back', 0, 1, 0)
+        local equipment_component = Equipment(SLOTS.back, 0, 1, 0)
         local item = GameObject(0, 0, '\\', 'Cloak of Protection', colors.light_purple, false, nil, nil, nil, equipment_component)
         table.insert(player.inventory, item)      
         return player
@@ -36,7 +36,7 @@ local class_factory = {
         player.base_xp = 400
         
         --staff
-        local equipment_component = Equipment('right hand', 4, 0, 10, nil, {type="attack", usage_function=use_holy_weapon})
+        local equipment_component = Equipment(SLOTS.right_hand, 4, 0, 10, nil, {type="attack", usage_function=use_holy_weapon})
         local item = GameObject(0, 0, 'T', 'Sword of Alexander', colors.light_yellow, false, nil, nil, nil, equipment_component)
         table.insert(player.inventory, item)
         

@@ -4,6 +4,10 @@ local mainscreen = {}
 function mainscreen.new()
     local self = screen.new()
 
+    function self:init()
+        console.setFullscreen(false)
+    end
+
     function self:draw()
     
     end

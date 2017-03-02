@@ -1,6 +1,11 @@
 # CHANGELOG
 
 # v 1.3
+* Minor bugfixes
+* Fixed a major bug where generation would pick the earliest value from the dungeon level table
+* Added a camera. Maps can now be bigger than their window
+
+# v 1.3
 * Refactored entire codebase _again_
 * Classes! You can now pick a class when you start a game (+Lovemancer, +Paladin)
 * A proper pause menu

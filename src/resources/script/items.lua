@@ -97,57 +97,57 @@ local item_factory = {
                 return item
                 end,
             wpn_s_sword = function(x, y)
-                local equipment_component = Equipment('right hand', 2, 0, 0, nil, nil)
+                local equipment_component = Equipment(SLOTS.right_hand, 2, 0, 0, nil, nil)
                 local item = GameObject(x, y, 't', 'shortsword', colors.grey_2, false, nil, nil, nil, equipment_component)
                 return item
                 end,
             wpn_l_sword = function(x, y)
-                local equipment_component = Equipment('right hand', 3, 0, 0, nil, nil)
+                local equipment_component = Equipment(SLOTS.right_hand, 3, 0, 0, nil, nil)
                 local item = GameObject(x, y, '|', 'longsword', colors.grey_2, false, nil, nil, nil, equipment_component)
                 return item
                 end,
             wpn_g_sword = function(x, y)
-                local equipment_component = Equipment('right hand', 5, 0, 0, nil, nil)
+                local equipment_component = Equipment(SLOTS.right_hand, 5, 0, 0, nil, nil)
                 local item = GameObject(x, y, '|', 'greatsword', colors.grey_1, false, nil, nil, nil, equipment_component)
                 return item
                 end,
             wpn_rapier = function(x, y)
-                local equipment_component = Equipment('left hand', 1, 0, 0, nil, nil)
+                local equipment_component = Equipment(SLOTS.left_hand, 1, 0, 0, nil, nil)
                 local item = GameObject(x, y, 't', 'rapier', colors.blue, false, nil, nil, nil, equipment_component)
                 return item
                 end,
             arm_shield = function(x, y)                
-                local equipment_component = Equipment('left hand', 0, 1, 0, nil, nil)
+                local equipment_component = Equipment(SLOTS.left_hand, 0, 1, 0, nil, nil)
                 local item = GameObject(x, y, 'O', 'shield', colors.orange, false, nil, nil, nil, equipment_component)
                 return item
                 end,
             arm_l_armor = function(x, y)
-                local equipment_component = Equipment('chest', 0, 1, 0, nil, nil)
+                local equipment_component = Equipment(SLOTS.body, 0, 1, 0, nil, nil)
                 local item = GameObject(x, y, '%', 'leather armor', colors.dark_orange, false, nil, nil, nil, equipment_component)
                 return item
                 end,
             arm_c_armor = function(x, y)
-                local equipment_component = Equipment('chest', 0, 2, 0, nil, nil)
+                local equipment_component = Equipment(SLOTS.body, 0, 2, 0, nil, nil)
                 local item = GameObject(x, y, '%', 'chainmail armor', colors.grey_1, false, nil, nil, nil, equipment_component)
                 return item
                 end,
             arm_p_armor = function(x, y)
-                local equipment_component = Equipment('chest', 0, 3, 0, nil, nil)
+                local equipment_component = Equipment(SLOTS.body, 0, 3, 0, nil, nil)
                 local item = GameObject(x, y, '$', 'plate armor', colors.grey_1, false, nil, nil, nil, equipment_component)
                 return item
                 end,
             acc_scarf = function(x, y)
-                local equipment_component = Equipment('neck', 0, 0, 5, nil, nil)
+                local equipment_component = Equipment(SLOTS.neck, 0, 0, 5, nil, nil)
                 local item = GameObject(x, y, 'S', 'Scarf of Courage', colors.red, false, nil, nil, nil, equipment_component)
                 return item
                 end,
             art_stone_mask = function(x, y)
-                local equipment_component = Equipment('face', 0, 0, 0, equip_stone_mask, nil)
+                local equipment_component = Equipment(SLOTS.face, 0, 0, 0, equip_stone_mask, nil)
                 local item = GameObject(x, y, '8', 'Stone Mask', colors.grey_1, false, nil, nil, nil, equipment_component)
                 return item
                 end,
             wpn_silver_dagger = function(x, y)
-                local equipment_component = Equipment('right hand', 2, 0, 0, nil, {type="attack", usage_function=use_holy_weapon})
+                local equipment_component = Equipment(SLOTS.right_hand, 2, 0, 0, nil, {type="attack", usage_function=use_holy_weapon})
                 local item = GameObject(x, y, '-', 'silver dagger', colors.grey_5, false, nil, nil, nil, equipment_component)
                 return item
             end

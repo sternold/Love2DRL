@@ -20,7 +20,7 @@ function inventory.new()
         for key, value in pairs(data.player.inventory) do
             local text = value.name
             if value.equipment ~= nil and value.equipment.is_equipped then
-                text = text .. " (on " .. value.equipment.slot .. ")"
+                text = text .. " (on " .. table.index_of(SLOTS, value.equipment.slot):gsub("_", " ") .. ")"
             end
             table.insert(options, text)
         end
