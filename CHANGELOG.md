@@ -31,8 +31,6 @@
 * Added a whole bunch of monster and items (+goblins, +kobolds, +vampires, +shields, +rapiers and +more!)
 * Added a vampirism mechanic
 * Fixed most bugs!
-
-# v 0.9.5
 * added configuration screen
 * added fullscreen function
 
