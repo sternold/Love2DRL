@@ -1,2 +1,2 @@
-/release/packaging
-*.lnk
+_old/
+.vscode/
