@@ -73,7 +73,7 @@ function  love.graphics.console.drawMenu(header, options, width)
     end
     local toptions = {}
     for k,v in pairs(options) do
-        table.insert(toptions, {text="(" .. ALPHABET[k] .. ") " .. v, color=color_white})
+        table.insert(toptions, {text="(" .. ALPHABET[k] .. ") " .. v, color=colors.white})
     end
 
      love.graphics.console.drawWindow(header, toptions, 2, 2, width, table.maxn(options) + 4)

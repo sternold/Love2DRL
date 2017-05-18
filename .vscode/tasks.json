@@ -1,0 +1,17 @@
+{
+    "version": "0.1.0",
+    "tasks":[
+        {
+            "taskName": "build",
+            "command": "${workspaceRoot}\\.vscode\\build.bat",
+            "isShellCommand": true,
+            "args": ["${workspaceRoot}\\src", "${workspaceRoot}\\build"],
+            "showOutput": "always"
+        },
+        {
+            "taskName": "run",
+            "command": "${workspaceRoot}\\build\\build.love",
+            "isShellCommand": true
+        }
+    ]   
+}
