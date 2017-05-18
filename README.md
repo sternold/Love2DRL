@@ -1,6 +1,6 @@
 # Love2DRL
 
-This is a roguelike created following [this tutorial.](http://www.roguebasin.com/index.php?title=Complete_Roguelike_Tutorial,_using_python%2Blibtcod) [Download the latest version here!](https://github.com/sternold/Love2DRL/raw/master/release/v.1.4.zip)
+This is a roguelike created following [this tutorial.](http://www.roguebasin.com/index.php?title=Complete_Roguelike_Tutorial,_using_python%2Blibtcod) [Download the latest version here!](https://github.com/sternold/Love2DRL/releases). Earlier versions can be found [here.](https://github.com/sternold/Love2DRL/tree/master/_old/release)
 
 ## How To Play
 * Press the Arrow keys to move around.
